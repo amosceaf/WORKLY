@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Workly & Evolia</title>
+<style>
+:root{--bg:#F5F7FB;--surface:#fff;--text:#162033;--muted:#5D6B82;--brand:#4F46E5;--brand-t:#fff;--soft:#E9E8FD;--ok:#0E9F6E;--warn:#D97706;--line:#DDE3EE;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0E1424;--surface:#172037;--text:#E8ECF6;--muted:#9AA7C0;--brand:#8B85FF;--brand-t:#0E1424;--soft:#26305A;--ok:#34D399;--warn:#FBBF24;--line:#2A3556;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0E1424;--surface:#172037;--text:#E8ECF6;--muted:#9AA7C0;--brand:#8B85FF;--brand-t:#0E1424;--soft:#26305A;--ok:#34D399;--warn:#FBBF24;--line:#2A3556;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 16px 48px}
+header{padding:18px 0 4px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.logo{font-size:24px;font-weight:800;letter-spacing:-.5px;cursor:pointer}.logo span{color:var(--brand)}
+.badge{font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px;background:var(--soft);color:var(--brand)}
+nav{display:flex;gap:6px;overflow-x:auto;padding:8px 0 14px}
+nav a{white-space:nowrap;text-decoration:none;color:var(--muted);padding:8px 14px;border-radius:99px;font-weight:600;font-size:15px}
+nav a.on{background:var(--brand);color:var(--brand-t)}
+h1{font-size:26px;margin:8px 0 4px}h2{font-size:18px;margin:0 0 6px}
+.sub,.meta{color:var(--muted)}.sub{margin:0 0 16px}.meta{font-size:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:4px}
+input,select,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit}
+input[type=checkbox]{width:auto;margin-right:6px}textarea{min-height:130px;resize:vertical}
+button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 16px;background:var(--brand);color:var(--brand-t);cursor:pointer}
+button.ghost{background:var(--soft);color:var(--brand)}button:disabled{opacity:.55;cursor:default}
+button.lnk{background:none;color:var(--muted);padding:4px 8px;font-weight:600;font-size:13px}
+.row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.chip{font-size:12px;padding:3px 10px;border-radius:99px;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+.chip.v{color:var(--ok);border-color:var(--ok)}.match{font-weight:800;color:var(--ok);font-size:18px}
+.bar{height:10px;border-radius:99px;background:var(--line);overflow:hidden;margin:8px 0}.bar i{display:block;height:100%;background:var(--brand)}
+.tip{padding:8px 0;border-top:1px solid var(--line)}.ok{color:var(--ok)}.warn{color:var(--warn)}
+.hero{text-align:center;padding:36px 8px}.hero h1{font-size:34px}.hero .btns{justify-content:center}
+.price{font-size:30px;font-weight:800}ul.f{padding-left:20px;margin:8px 0 14px}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%;text-align:center}#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><div class="logo" data-a="go" data-id="accueil">Workly <span>×</span> Evolia</div><span class="badge" id="plan"></span></header>
+<nav id="nav"></nav><main id="view"></main>
+<p class="meta">Workly × Evolia</p>
+</div><div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+let SB=null;
+const $=s=>document.querySelector(s),g=i=>$("#"+i).value.trim();
+const esc=t=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const load=(k,d)=>{try{const v=localStorage.getItem("wk3_"+k);return v?JSON.parse(v):d}catch(e){return d}};
+const save=(k,v)=>{try{localStorage.setItem("wk3_"+k,JSON.stringify(v))}catch(e){}};
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("show"),3200)}
+const msgErr=e=>/already|exists/i.test(e.message)?"Cet e-mail a déjà un compte : connecte-toi":/password/i.test(e.message)?"Mot de passe trop court (8 caractères minimum)":/Invalid login/i.test(e.message)?"E-mail ou mot de passe incorrect":/not confirmed/i.test(e.message)?"Confirme d’abord ton e-mail":e.message;
+const LV=["Débutant","Intermédiaire","Confirmé","Expert"],FIELDS=["Développement web","Marketing digital","Design","Data & IA","Commerce","Finance"],ST=["Envoyée","Vue","Entretien","Refusée","Acceptée"];
+const EX={"Développement web":["Page responsive en HTML/CSS pur.","Afficher les données d’une API publique.","Écrire trois tests pour une fonction.","Publier un projet sur GitHub avec un README."],"Marketing digital":["5 publications pour une marque fictive.","Audit SEO d’une page.","Budget pub de 100 € et ciblage.","Analyser une campagne et proposer 3 améliorations."],"Design":["Refaire l’écran d’accueil d’une application.","Créer une charte graphique.","Prototype cliquable de 4 écrans.","Étude de cas d’une page."],"Data & IA":["Nettoyer un CSV incomplet.","3 questions métier en SQL.","Un graphique clair commenté en 5 lignes.","Entraîner un modèle simple et expliquer ses limites."],"Commerce":["E-mail de prospection de 100 mots.","Réponses à 5 objections clients.","Pitch de vente de 60 secondes.","Planifier ton pipeline de la semaine."],"Finance":["Budget prévisionnel dans un tableur.","Interpréter 3 ratios financiers.","Synthèse d’un bilan en une page.","Scénarios optimiste et pessimiste."]};
+const QS=[["Présente-toi en une minute.","Parcours, compétences clés, objectif : trois temps."],["Pourquoi ce poste et cette entreprise ?","Cite un élément précis de l’entreprise."],["Parle d’une difficulté surmontée.","Méthode STAR : situation, tâche, action, résultat."],["Ta plus grande force ? Ta faiblesse ?","Donne une faiblesse réelle et ce que tu fais pour la corriger."],["Où te vois-tu dans trois ans ?","Reste réaliste et liée au poste."],["Quelles sont tes prétentions salariales ?","Renseigne-toi sur le marché et propose une fourchette."],["Comment gères-tu un désaccord ?","Écoute, faits, solution commune."],["As-tu des questions pour nous ?","Prépare 2 questions sur l’équipe et les objectifs."]];
+const FREE={adapt:2,ana:3,qs:3,ex:2,post:1};
+let S={uid:null,user:null,jobs:[],applied:{},saved:[],reported:[],done:load("done",{}),ana:load("ana",0),adapt:load("adapt",0),alerts:load("alerts",false)};
+let W=null,ET="cv",TARGET=null;
+const prem=()=>!!(S.user&&S.user.premium),role=()=>S.user?S.user.role:null,jobs=()=>S.jobs,sk=p=>(p.skills||"").toLowerCase().split(",").map(s=>s.trim()).filter(Boolean);
+function match(p,j){if(!p||(!p.poste&&!sk(p).length))return null;let s=0;const w=(p.poste||"").toLowerCase().split(/\s+/).filter(x=>x.length>3),t=(j.title+" "+j.field).toLowerCase();
+ if(w.some(x=>t.includes(x))||p.field===j.field)s+=40;const d=Math.abs(j.level-(p.niveau||0));s+=d===0?30:d===1?15:0;
+ const k=sk(p);if(k.length&&j.tags.length)s+=Math.round(30*j.tags.filter(a=>k.some(b=>a.toLowerCase().includes(b)||b.includes(a.toLowerCase()))).length/j.tags.length);return Math.min(s,100)}
+
+async function loadAll(){
+ const{data:{session}}=await SB.auth.getSession();S.uid=session?session.user.id:null;S.user=null;S.applied={};S.saved=[];
+ const jr=await SB.from("jobs").select("*").eq("active",true).order("created_at",{ascending:false});
+ S.jobs=(jr.data||[]).map(r=>({...r,tags:r.tags||[],verified:true}));
+ if(!S.uid)return;
+ const pr=await SB.from("profiles").select("*").eq("id",S.uid).maybeSingle();S.user=pr.data;if(!S.user)return;
+ const m=session.user.user_metadata||{};
+ if(S.user.role==="candidat"&&!S.user.poste&&m.poste){const p={poste:m.poste,niveau:+m.niveau||0,field:m.field||"",pays:m.pays||"",skills:m.skills||""};await SB.from("profiles").update(p).eq("id",S.uid);Object.assign(S.user,p)}
+ if(S.user.role==="candidat"){const a=await SB.from("applications").select("job_id,status").eq("candidate",S.uid);S.applied=Object.fromEntries((a.data||[]).map(x=>[x.job_id,x.status]));
+  const v=await SB.from("saved_jobs").select("job_id").eq("candidate",S.uid);S.saved=(v.data||[]).map(x=>x.job_id)}}
+
+const NAV=()=>!S.user?[["accueil","Accueil"],["offres","Offres"],["tarifs","Tarifs"],["inscription","Créer un compte"],["connexion","Connexion"]]:role()==="candidat"?[["tableau","Tableau de bord"],["offres","Offres"],["candidatures","Candidatures"],["evolia","Evolia"],["tarifs","Tarifs"],["compte","Compte"]]:[["recruter","Recruter"],["offres","Offres"],["tarifs","Tarifs"],["compte","Compte"]];
+function route(){const h=(location.hash||"#accueil").slice(1);if(NAV().some(t=>t[0]===h))return h;return S.user?NAV()[0][0]:"accueil"}
+function go(h){if(location.hash==="#"+h)render();else location.hash=h}
+function render(){const r=route();$("#plan").textContent=S.user?(prem()?"Premium":"Gratuit"):"";
+ $("#nav").innerHTML=NAV().map(t=>`<a href="#${t[0]}" class="${t[0]===r?"on":""}">${t[1]}</a>`).join("");
+ ({accueil:vAccueil,inscription:vInsc,connexion:vConn,tableau:vTab,offres:vOffres,candidatures:vCand,evolia:vEvo,recruter:vRec,tarifs:vTarifs,compte:vCompte})[r]();window.scrollTo(0,0)}
+
+function vAccueil(){$("#view").innerHTML=`<div class="hero"><h1>Trouve le poste qui te correspond.<br>Évolue avec Evolia.</h1><p class="sub">Des offres vérifiées, un coach carrière qui adapte ton CV à chaque annonce, et un suivi clair de tes candidatures.</p>
+<div class="btns"><button data-a="role" data-id="candidat">Je cherche un emploi</button><button class="ghost" data-a="role" data-id="entreprise">Je recrute</button></div></div>
+<div class="grid"><div class="card"><h2>Workly</h2><span class="meta">Offres du monde entier, classées par compatibilité avec ton profil.</span></div><div class="card"><h2>Evolia</h2><span class="meta">CV adapté à chaque offre, analyse, exercices et préparation d’entretien.</span></div><div class="card"><h2>Confiance</h2><span class="meta">Entreprises vérifiées et signalement des fausses offres.</span></div></div>`}
+
+function vConn(){$("#view").innerHTML=`<h1>Connexion</h1><div class="card"><div class="grid"><div><label>E-mail</label><input id="mail" type="email"></div><div><label>Mot de passe</label><input id="pw" type="password"></div></div><div class="btns"><button data-a="login">Se connecter</button><button class="ghost" data-a="go" data-id="inscription">Créer un compte</button></div></div>`}
+
+function vInsc(){
+ if(!W){$("#view").innerHTML=`<h1>Créer un compte</h1><p class="sub">Tu es…</p><div class="grid"><div class="card"><h2>Candidat</h2><span class="meta">Gratuit, sans carte bancaire. Trois étapes courtes.</span><div class="btns"><button data-a="role" data-id="candidat">Commencer</button></div></div><div class="card"><h2>Entreprise</h2><span class="meta">E-mail professionnel, puis vérification avant la première offre.</span><div class="btns"><button data-a="role" data-id="entreprise">Commencer</button></div></div></div>`;return}
+ const d=W.d,cons=`<label style="margin-top:12px"><input type="checkbox" id="cons"> J’accepte que mes données (CV compris) servent à te proposer des offres. Tu peux demander leur suppression à tout moment.</label>`;let h="";
+ if(W.role==="candidat"){
+  if(W.step===1)h=`<h2>Étape 1/3 : ton compte</h2><div class="grid"><div><label>Nom</label><input id="nom"></div><div><label>E-mail</label><input id="mail" type="email"></div><div><label>Mot de passe (8 caractères min.)</label><input id="pw" type="password"></div></div>${cons}<div class="btns"><button data-a="c1">Continuer</button></div>`;
+  if(W.step===2)h=`<h2>Étape 2/3 : ton objectif</h2><div class="grid"><div><label>Poste visé</label><input id="poste" placeholder="ex. Designer UI/UX"></div><div><label>Niveau</label><select id="niv">${LV.map((l,i)=>`<option value="${i}">${l}</option>`).join("")}</select></div><div><label>Domaine</label><select id="fld">${FIELDS.map(f=>`<option>${f}</option>`).join("")}</select></div></div><div class="btns"><button data-a="c2">Continuer</button></div>`;
+  if(W.step===3){const n=jobs().filter(j=>match(d,j)>=60).length;h=`<h2>Étape 3/3 : ton CV</h2><p class="ok"><b>${n} offre(s) compatible(s)</b> actuellement.</p><div class="grid"><div><label>Pays</label><input id="pays"></div><div><label>Compétences (virgules)</label><input id="skills" placeholder="Figma, UX"></div></div><label style="margin-top:12px">Colle ton CV ou importe un fichier texte (.txt)</label><textarea id="cv"></textarea><input type="file" id="file" accept=".txt" style="margin-top:8px"><div class="btns"><button data-a="c3">Créer mon compte</button><button class="ghost" data-a="c3" data-id="skip">Passer</button></div>`}
+ }else h=`<h2>Compte entreprise</h2><div class="grid"><div><label>Entreprise</label><input id="comp"></div><div><label>Site web</label><input id="site" placeholder="https://www.exemple.com"></div><div><label>E-mail professionnel</label><input id="mail" type="email"></div><div><label>Mot de passe (8 caractères min.)</label><input id="pw" type="password"></div></div>${cons}<div class="btns"><button data-a="e1">Créer le compte</button></div>`;
+ $("#view").innerHTML=`<h1>Inscription ${W.role}</h1><div class="card">${h}</div>`;
+ const f=$("#file");if(f)f.onchange=()=>{const r=new FileReader();r.onload=()=>{$("#cv").value=r.result};if(f.files[0])r.readAsText(f.files[0])}}
+
+function vTab(){const u=S.user,n=Object.keys(S.applied).length;
+ const st=[[u.poste&&u.pays&&sk(u).length,"Compléter ton profil","compte"],[(u.cv||"").length>30,"Ajouter ton CV","compte"],[S.ana>0,"Analyser ton CV avec Evolia","evolia"],[n>=3,"Postuler à 3 offres ("+n+"/3)","offres"]];
+ const done=st.filter(s=>s[0]).length,nx=st.find(s=>!s[0]);
+ const top=jobs().map(j=>({j,m:match(u,j)})).filter(x=>x.m!==null).sort((a,b)=>b.m-a.m).slice(0,3);
+ $("#view").innerHTML=`<h1>Bonjour ${esc(u.nom||"")} 👋</h1><div class="card"><h2>Ta progression : ${done}/4</h2><div class="bar"><i style="width:${done*25}%"></i></div>${st.map(s=>`<div class="tip ${s[0]?"ok":""}">${s[0]?"✔":"○"} ${s[1]}</div>`).join("")}${nx?`<div class="btns"><button data-a="go" data-id="${nx[2]}">${nx[1]}</button></div>`:'<p class="ok">Bravo, tout est fait !</p>'}</div>
+ <div class="card"><h2>Meilleures offres pour toi</h2>${top.map(x=>`<div class="tip"><b>${esc(x.j.title)}</b> · ${esc(x.j.company)} <span class="match">${x.m}%</span></div>`).join("")||'<span class="meta">Complète ton profil pour voir des offres compatibles.</span>'}<div class="btns"><button class="ghost" data-a="go" data-id="offres">Voir toutes les offres</button></div></div>`}
+
+function vOffres(){const cs=[...new Set(jobs().map(j=>j.country))].sort();
+ $("#view").innerHTML=`<h1>Offres</h1><div class="card"><div class="grid"><div><label>Poste ou mot-clé</label><input id="fq"></div><div><label>Pays</label><select id="fc"><option value="">Tous</option>${cs.map(c=>`<option>${esc(c)}</option>`).join("")}</select></div><div><label>Niveau</label><select id="fl"><option value="">Tous</option>${LV.map((l,i)=>`<option value="${i}">${l}</option>`).join("")}</select></div><div><label>Domaine</label><select id="ff"><option value="">Tous</option>${FIELDS.map(f=>`<option>${f}</option>`).join("")}</select></div></div>
+ <label style="margin-top:12px"><input type="checkbox" id="fr"> Télétravail uniquement</label></div><div id="list"></div>`;
+ ["fq","fc","fl","ff","fr"].forEach(i=>$("#"+i).addEventListener("input",list));list()}
+function list(){const q=$("#fq").value.toLowerCase(),c=$("#fc").value,l=$("#fl").value,f=$("#ff").value,r=$("#fr").checked,p=role()==="candidat"?S.user:null;
+ const js=jobs().filter(j=>(!q||(j.title+j.company+j.tags.join()).toLowerCase().includes(q))&&(!c||j.country===c)&&(l===""||j.level==l)&&(!f||j.field===f)&&(!r||j.remote)).map(j=>({j,m:match(p,j)})).sort((a,b)=>(b.m??-1)-(a.m??-1));
+ $("#list").innerHTML=js.map(({j,m})=>{const ap=S.applied[j.id],sv=S.saved.includes(j.id);return `<div class="card"><div class="row"><div><h2>${esc(j.title)}</h2><span class="meta">${esc(j.company)} · ${esc(j.city)}, ${esc(j.country)}</span></div>${m!==null?`<span class="match">${m}%</span>`:""}</div>
+ <div class="chips">${j.verified?'<span class="chip v">✔ Entreprise vérifiée</span>':""}<span class="chip">${LV[j.level]}</span><span class="chip">${esc(j.field)}</span>${j.remote?'<span class="chip">Télétravail</span>':""}${j.tags.map(t=>`<span class="chip">${esc(t)}</span>`).join("")}</div>
+ <div class="btns"><button data-a="apply" data-id="${j.id}" ${ap?"disabled":""}>${ap?"Candidature envoyée":"Postuler"}</button><button class="ghost" data-a="adaptjob" data-id="${j.id}">Adapter mon CV (Evolia)</button><button class="ghost" data-a="save" data-id="${j.id}">${sv?"★ Enregistrée":"☆ Enregistrer"}</button>${S.reported.includes(j.id)?'<span class="meta">Signalée</span>':`<button class="lnk" data-a="report" data-id="${j.id}">Signaler</button>`}</div></div>`}).join("")||'<div class="card meta">Aucune offre pour le moment.</div>'}
+
+function vCand(){const L=Object.keys(S.applied).map(id=>jobs().find(j=>j.id==id)).filter(Boolean),sv=S.saved.map(id=>jobs().find(j=>j.id==id)).filter(Boolean);
+ $("#view").innerHTML=`<h1>Mes candidatures</h1><p class="sub">Mets à jour le statut au fil des réponses.</p>`+(L.map(j=>`<div class="card"><div class="row"><div><h2>${esc(j.title)}</h2><span class="meta">${esc(j.company)}</span></div><select data-st="${j.id}" style="width:auto">${ST.map(s=>`<option ${s===S.applied[j.id]?"selected":""}>${s}</option>`).join("")}</select></div></div>`).join("")||'<div class="card meta">Aucune candidature pour le moment.</div>')+`<h2 style="margin-top:20px">Offres enregistrées</h2>`+(sv.map(j=>`<div class="card">${esc(j.title)} · ${esc(j.company)}</div>`).join("")||'<div class="card meta">Aucune offre enregistrée.</div>')}
+
+function vEvo(){const T=[["cv","Analyser mon CV"],["adapt","Adapter à une offre"],["ent","Entretien"],["ex","Exercices"]];
+ $("#view").innerHTML=`<h1>Evolia, ton coach carrière</h1><div class="tabs">${T.map(t=>`<button class="${t[0]===ET?"":"ghost"}" data-a="etab" data-id="${t[0]}">${t[1]}</button>`).join("")}</div><div class="card" id="eb"></div>`;
+ const u=S.user,b=$("#eb");
+ if(ET==="cv")b.innerHTML=`<p class="meta">Analyses ${prem()?"illimitées":Math.max(0,FREE.ana-S.ana)+" restantes"}</p><textarea id="cv">${esc(u.cv||"")}</textarea><div class="btns"><button data-a="ana">Analyser</button></div><div id="res"></div>`;
+ if(ET==="adapt"){if(!jobs().length){b.innerHTML='<span class="meta">Aucune offre disponible pour le moment.</span>';return}const tj=TARGET||jobs()[0].id;b.innerHTML=`<p class="meta">Adaptations ${prem()?"illimitées":Math.max(0,FREE.adapt-S.adapt)+" restantes"}. Brouillon généré à partir de ton profil ; la version IA complète arrive à l’étape 6.</p><label>Offre visée</label><select id="tj">${jobs().map(j=>`<option value="${j.id}" ${j.id==tj?"selected":""}>${esc(j.title)} · ${esc(j.company)}</option>`).join("")}</select><div class="btns"><button data-a="gen">Générer</button></div><div id="res"></div>`}
+ if(ET==="ent")b.innerHTML=`<p class="meta">Questions ${prem()?"toutes disponibles":FREE.qs+" sur "+QS.length+" en gratuit"}</p>`+QS.map((q,i)=>{const lk=!prem()&&i>=FREE.qs;return lk?`<div class="tip">🔒 Réservé à Premium</div>`:`<div class="tip"><b>${q[0]}</b><textarea style="min-height:70px;margin-top:6px" placeholder="Ta réponse…"></textarea><button class="lnk" data-a="tip" data-id="${i}">Voir le conseil</button><div class="meta" id="t${i}"></div></div>`}).join("");
+ if(ET==="ex"){const f=u.field||FIELDS[0],L=EX[f],d=S.done[f]||[];b.innerHTML=`<label>Mon domaine</label><select id="ef">${FIELDS.map(x=>`<option ${x===f?"selected":""}>${x}</option>`).join("")}</select><div class="bar"><i style="width:${d.length/L.length*100}%"></i></div>`+L.map((t,i)=>{const lk=!prem()&&i>=FREE.ex;return `<div class="tip"><label style="display:flex;gap:8px;color:var(--text);font-size:16px;font-weight:400"><input type="checkbox" data-a="ex" data-id="${i}" ${d.includes(i)?"checked":""} ${lk?"disabled":""}>${lk?"🔒 Réservé à Premium":esc(t)}</label></div>`}).join("");$("#ef").onchange=()=>{S.user.field=$("#ef").value;SB.from("profiles").update({field:S.user.field}).eq("id",S.uid).then(()=>{});vEvo()}}}
+function analyse(t,p){const w=t.trim().split(/\s+/).filter(Boolean).length;let s=0;const o=[];const c=(ok,pt,a,b)=>{if(ok)s+=pt;o.push([ok,ok?a:b])};
+ c(w>=150&&w<=700,20,"Longueur adaptée ("+w+" mots).","Vise 150 à 700 mots (tu en as "+w+").");c(/[\w.+-]+@[\w-]+\.[\w.]+/.test(t),10,"E-mail présent.","Ajoute un e-mail professionnel.");
+ c(/exp[ée]rience/i.test(t),10,"Section Expérience.","Ajoute une section Expérience.");c(/formation|[ée]tudes|dipl[ôo]me/i.test(t),10,"Section Formation.","Ajoute une section Formation.");c(/comp[ée]tences/i.test(t),10,"Section Compétences.","Ajoute une section Compétences.");
+ c((t.match(/\d+\s?(%|k\b|€|\$|clients|projets|ans|mois)/gi)||[]).length>=2,20,"Résultats chiffrés présents.","Ajoute des chiffres : « +30 % de ventes ».");
+ c((t.match(/\b(géré|développé|créé|dirigé|amélioré|augmenté|réduit|lancé|conçu|optimisé|organisé)\b/gi)||[]).length>=3,10,"Verbes d’action bien utilisés.","Commence tes phrases par : développé, lancé, optimisé…");
+ c(!p.poste||t.toLowerCase().includes(p.poste.toLowerCase().split(" ")[0]),10,"Ton poste visé apparaît.","Mentionne clairement le poste visé.");return{s,o}}
+function gen(j){const u=S.user,k=sk(u),have=j.tags.filter(t=>k.some(s=>t.toLowerCase().includes(s)||s.includes(t.toLowerCase()))),miss=j.tags.filter(t=>!have.includes(t));
+ return `RÉSUMÉ DU CV (à placer en haut)\n${u.nom||"Candidat"}, ${u.poste||j.title}, niveau ${LV[u.niveau||0].toLowerCase()}${u.pays?", "+u.pays:""}. Compétences en lien avec l’offre : ${have.join(", ")||"à compléter"}.\n\nCONSEILS\n- Mets en avant en premier : ${have.join(", ")||"tes expériences les plus proches du poste"}.\n- Reprends les mots de l’annonce : « ${j.title} ».\n${miss.length?"- À acquérir ou à montrer : "+miss.join(", ")+" (voir l’onglet Exercices).\n":""}\nLETTRE DE MOTIVATION\nMadame, Monsieur,\n\nJe vous écris pour candidater au poste de ${j.title} chez ${j.company}. Mon parcours en ${u.field||j.field} et mes compétences en ${have.join(", ")||"lien avec le poste"} correspondent à votre besoin. Je serais ravi(e) de détailler ma motivation lors d’un entretien.\n\nCordialement,\n${u.nom||""}`}
+
+function vRec(){const u=S.user,mine=S.jobs.filter(j=>j.owner===S.uid);
+ $("#view").innerHTML=`<h1>Espace recrutement</h1><div class="card">${u.verified?`<span class="chip v">✔ ${esc(u.company)} : entreprise vérifiée</span>`:`<h2>Vérification en attente</h2><p class="meta">Ton entreprise est en cours de vérification. Tu pourras publier des offres dès qu’elle sera validée.</p>`}</div>
+ <div class="card"><h2>Publier une offre</h2><p class="meta">Gratuit : ${FREE.post} offre. Premium : illimité.</p><div class="grid"><div><label>Poste</label><input id="et"></div><div><label>Pays</label><input id="ep"></div><div><label>Ville</label><input id="ev"></div><div><label>Niveau</label><select id="el">${LV.map((l,i)=>`<option value="${i}">${l}</option>`).join("")}</select></div><div><label>Domaine</label><select id="ed">${FIELDS.map(f=>`<option>${f}</option>`).join("")}</select></div><div><label>Compétences (virgules)</label><input id="eg"></div></div><label style="margin-top:12px"><input type="checkbox" id="er"> Télétravail possible</label><div class="btns"><button data-a="pub" ${u.verified?"":"disabled"}>Publier</button></div></div>
+ <div class="card"><h2>Mes offres (${mine.length})</h2>${mine.map(j=>`<div class="tip">${esc(j.title)} · ${esc(j.city)}, ${esc(j.country)}</div>`).join("")||'<span class="meta">Aucune offre publiée.</span>'}</div>
+ <div class="card"><h2>Candidats</h2><span class="meta">La recherche de candidats et la messagerie arrivent à l’étape suivante.</span></div>`}
+
+function vTarifs(){const P=prem();$("#view").innerHTML=`<h1>Tarifs</h1><h2>Candidats</h2><div class="grid"><div class="card"><h2>Gratuit</h2><div class="price">0 €</div><ul class="f"><li>Candidatures illimitées</li><li>${FREE.ana} analyses de CV</li><li>${FREE.adapt} CV adaptés à des offres</li><li>${FREE.qs} questions d’entretien</li><li>${FREE.ex} exercices par domaine</li></ul><button class="ghost" disabled>${P?"—":"Offre actuelle"}</button></div>
+ <div class="card"><h2>Premium</h2><div class="price">7,28 € <span class="meta">/ mois</span></div><ul class="f"><li>Tout Evolia en illimité</li><li>CV et lettre adaptés à chaque offre</li><li>Entretiens et exercices complets</li></ul><button data-a="plan" ${P?"disabled":""}>${P?"Offre actuelle":"Passer Premium"}</button></div></div>
+ <h2 style="margin-top:12px">Entreprises</h2><div class="grid"><div class="card"><h2>Découverte</h2><div class="price">0 €</div><ul class="f"><li>${FREE.post} offre publiée</li></ul></div><div class="card"><h2>Pro</h2><div class="price">Prix à définir</div><ul class="f"><li>Offres illimitées</li><li>Mise en avant des offres</li></ul></div></div>
+ <p class="meta">Le paiement (carte et mobile money) sera connecté à l’étape 7.</p>`}
+
+function vCompte(){const u=S.user;$("#view").innerHTML=`<h1>Mon compte</h1><div class="card"><h2>${esc(u.nom||u.company||"")}</h2><p class="meta">${esc(u.email)} · ${u.role==="candidat"?"Candidat":"Entreprise"} · ${prem()?"Premium":"Gratuit"}</p></div>
+ ${u.role==="candidat"?`<div class="card"><h2>Profil</h2><div class="grid"><div><label>Poste visé</label><input id="poste" value="${esc(u.poste)}"></div><div><label>Niveau</label><select id="niv">${LV.map((l,i)=>`<option value="${i}" ${i==u.niveau?"selected":""}>${l}</option>`).join("")}</select></div><div><label>Pays</label><input id="pays" value="${esc(u.pays)}"></div><div><label>Compétences</label><input id="skills" value="${esc(u.skills)}"></div></div><label style="margin-top:12px">CV</label><textarea id="cv">${esc(u.cv)}</textarea><div class="btns"><button data-a="psave">Enregistrer</button></div></div>`:""}
+ <div class="card"><h2>Données</h2><p class="meta">Tes données servent uniquement à te proposer des offres. La suppression complète du compte sera ajoutée avant le lancement.</p><button class="ghost" data-a="logout">Se déconnecter</button></div>`}
+
+const A={go:id=>go(id),
+role:id=>{W={role:id,step:1,d:{}};go("inscription")},
+c1(){const m=g("mail");if(!/\S+@\S+\.\S+/.test(m)||!g("nom")){toast("Renseigne ton nom et un e-mail valide");return}if($("#pw").value.length<8){toast("Mot de passe : 8 caractères minimum");return}if(!$("#cons").checked){toast("Accepte le consentement pour continuer");return}Object.assign(W.d,{nom:g("nom"),email:m,pw:$("#pw").value});W.step=2;render()},
+c2(){if(!g("poste")){toast("Indique le poste visé");return}Object.assign(W.d,{poste:g("poste"),niveau:+$("#niv").value,field:$("#fld").value});W.step=3;render()},
+async c3(id){const d=W.d;if(id!=="skip")Object.assign(d,{pays:g("pays"),skills:g("skills"),cv:$("#cv").value});
+ const{data,error}=await SB.auth.signUp({email:d.email,password:d.pw,options:{data:{role:"candidat",nom:d.nom,poste:d.poste,niveau:d.niveau,field:d.field,pays:d.pays||"",skills:d.skills||""}}});
+ if(error){toast(msgErr(error));return}
+ W=null;if(!data.session){toast("Compte créé : confirme ton e-mail puis connecte-toi");go("connexion");return}
+ await loadAll();if(d.cv&&S.user){await SB.from("profiles").update({cv:d.cv}).eq("id",S.uid);S.user.cv=d.cv}toast("Compte créé");go("tableau")},
+async e1(){const m=g("mail").toLowerCase(),c=g("comp");if(!/\S+@\S+\.\S+/.test(m)||!c){toast("Renseigne l’entreprise et un e-mail valide");return}if($("#pw").value.length<8){toast("Mot de passe : 8 caractères minimum");return}if(!$("#cons").checked){toast("Accepte le consentement pour continuer");return}
+ const site=g("site").toLowerCase().replace(/^https?:\/\//,"").replace(/^www\./,"").split("/")[0];
+ const{data,error}=await SB.auth.signUp({email:m,password:$("#pw").value,options:{data:{role:"entreprise",nom:c,company:c,site}}});
+ if(error){toast(msgErr(error));return}
+ W=null;if(!data.session){toast("Compte créé : confirme ton e-mail puis connecte-toi");go("connexion");return}
+ await loadAll();toast("Compte créé");go("recruter")},
+async login(){const{error}=await SB.auth.signInWithPassword({email:g("mail"),password:$("#pw").value});if(error){toast(msgErr(error));return}
+ await loadAll();if(!S.user){toast("Profil introuvable");return}go(role()==="candidat"?"tableau":"recruter")},
+async logout(){await SB.auth.signOut();await loadAll();go("accueil")},
+async apply(id){if(role()!=="candidat"){toast("Crée un compte candidat pour postuler");go("inscription");return}
+ const{error}=await SB.from("applications").insert({candidate:S.uid,job_id:+id});if(error&&error.code!=="23505"){toast("Erreur : "+error.message);return}
+ S.applied[id]="Envoyée";toast("Candidature envoyée");list()},
+async save(id){if(role()!=="candidat"){toast("Crée un compte candidat pour enregistrer");go("inscription");return}id=+id;
+ if(S.saved.includes(id)){await SB.from("saved_jobs").delete().eq("candidate",S.uid).eq("job_id",id);S.saved=S.saved.filter(x=>x!==id)}
+ else{await SB.from("saved_jobs").insert({candidate:S.uid,job_id:id});S.saved.push(id)}list()},
+async report(id){if(!S.uid){toast("Connecte-toi pour signaler une offre");go("connexion");return}await SB.from("reports").insert({job_id:+id,reporter:S.uid});S.reported.push(+id);toast("Merci, offre signalée pour vérification");list()},
+adaptjob(id){if(role()!=="candidat"){toast("Crée un compte candidat pour utiliser Evolia");go("inscription");return}TARGET=+id;ET="adapt";go("evolia")},
+etab(id){ET=id;vEvo()},
+ana(){const t=$("#cv").value;if(t.trim().length<30){toast("Colle d’abord ton CV");return}if(!prem()&&S.ana>=FREE.ana){toast("Limite gratuite atteinte");go("tarifs");return}S.ana++;save("ana",S.ana);const a=analyse(t,S.user);
+ $("#res").innerHTML=`<h2 style="margin-top:14px">Score : ${a.s}/100</h2><div class="bar"><i style="width:${a.s}%"></i></div>`+a.o.map(x=>`<div class="tip ${x[0]?"ok":"warn"}">${x[0]?"✔":"→"} ${esc(x[1])}</div>`).join("")},
+gen(){if(!prem()&&S.adapt>=FREE.adapt){toast("Limite gratuite atteinte");go("tarifs");return}S.adapt++;save("adapt",S.adapt);TARGET=+$("#tj").value;$("#res").innerHTML=`<textarea style="min-height:320px;margin-top:12px">${esc(gen(jobs().find(j=>j.id===TARGET)))}</textarea>`},
+tip(id){$("#t"+id).textContent="Conseil : "+QS[id][1]},
+ex(id){const f=S.user.field||FIELDS[0],d=S.done[f]||(S.done[f]=[]),i=+id,k=d.indexOf(i);k>=0?d.splice(k,1):d.push(i);save("done",S.done);vEvo()},
+async pub(){if(!g("et")||!g("ep")){toast("Renseigne le poste et le pays");return}
+ const{error}=await SB.from("jobs").insert({owner:S.uid,title:g("et"),company:S.user.company,country:g("ep"),city:g("ev")||"—",level:+$("#el").value,field:$("#ed").value,remote:$("#er").checked,tags:g("eg").split(",").map(x=>x.trim()).filter(Boolean)});
+ if(error){if(/Limite gratuite/.test(error.message)){toast("Limite gratuite atteinte");go("tarifs")}else toast("Impossible de publier : "+error.message);return}
+ await loadAll();toast("Offre publiée");render()},
+plan(){toast("Le paiement Premium sera connecté à l’étape 7")},
+async psave(){const p={poste:g("poste"),niveau:+$("#niv").value,pays:g("pays"),skills:g("skills"),cv:$("#cv").value};const{error}=await SB.from("profiles").update(p).eq("id",S.uid);if(error){toast("Erreur : "+error.message);return}Object.assign(S.user,p);toast("Profil enregistré")}};
+document.addEventListener("click",e=>{const b=e.target.closest("[data-a]");if(b&&A[b.dataset.a])A[b.dataset.a](b.dataset.id,b)});
+document.addEventListener("change",async e=>{const s=e.target.dataset.st;if(s){const{error}=await SB.from("applications").update({status:e.target.value}).eq("candidate",S.uid).eq("job_id",+s);if(error)toast("Erreur : "+error.message);else S.applied[s]=e.target.value}});
+window.addEventListener("hashchange",render);
+const fail=()=>{$("#view").innerHTML='<div class="card"><h2>Service indisponible</h2><p class="meta">Le service en ligne n’a pas pu être chargé. Désactive ton bloqueur de publicités pour ce site, vérifie ta connexion, puis recharge la page.</p></div>'};
+function boot(){SB=supabase.createClient("https://uenskswvwdziqxvafgyu.supabase.co","sb_publishable_cF5MFw7jUNKDKV1LlRqkAQ_zTFMIRYt");loadAll().then(render).catch(fail)}
+$("#view").innerHTML='<p class="meta">Chargement…</p>';
+if(window.supabase)boot();else{const s=document.createElement("script");s.src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js";s.onload=boot;s.onerror=fail;document.head.appendChild(s)}
+</script>
+</body>
+</html>
