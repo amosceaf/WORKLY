@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Workly Admin</title>
+<style>
+:root{--bg:#F5F7FB;--surface:#fff;--text:#162033;--muted:#5D6B82;--brand:#4F46E5;--brand-t:#fff;--soft:#E9E8FD;--ok:#0E9F6E;--warn:#D97706;--bad:#DC2626;--line:#DDE3EE;--orange:#F59E0B;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0E1424;--surface:#172037;--text:#E8ECF6;--muted:#9AA7C0;--brand:#8B85FF;--brand-t:#0E1424;--soft:#26305A;--ok:#34D399;--warn:#FBBF24;--bad:#F87171;--line:#2A3556;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+[hidden]{display:none!important}
+.shell{display:flex;min-height:100vh}
+aside{width:250px;flex:none;background:var(--surface);border-right:1px solid var(--line);position:sticky;top:0;height:100vh;overflow:auto;padding:14px 10px;display:flex;flex-direction:column;gap:4px}
+aside .logo{font-weight:800;font-size:18px;padding:6px 10px 12px}aside .logo span{color:var(--brand)}
+aside button.nav{all:unset;box-sizing:border-box;cursor:pointer;padding:9px 12px;border-radius:10px;color:var(--muted);font-weight:600;display:flex;gap:10px;align-items:center;white-space:nowrap}
+aside button.nav.on{background:var(--brand);color:var(--brand-t)}aside button.nav:hover:not(.on){background:var(--soft)}
+aside .sp{flex:1}
+main{flex:1;min-width:0;padding:20px 22px 60px;max-width:1200px}
+h1{font-size:24px;margin:0 0 4px}h2{font-size:17px;margin:0 0 8px}.sub,.meta{color:var(--muted)}.sub{margin:0 0 16px}.meta{font-size:13px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}.stat b{display:block;font-size:26px}.stat span{color:var(--muted);font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row.sb{justify-content:space-between}
+label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:0 0 3px}
+input,select,textarea{width:100%;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit}
+input[type=checkbox]{width:auto}
+button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:8px 14px;background:var(--brand);color:var(--brand-t);cursor:pointer}
+button.ghost{background:var(--soft);color:var(--brand)}button.bad{background:var(--bad);color:#fff}button.ok{background:var(--ok);color:#fff}button.sm{padding:5px 10px;font-size:13px}button:disabled{opacity:.5;cursor:default}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.chip{display:inline-block;font-size:12px;font-weight:700;padding:2px 9px;border-radius:99px;background:var(--soft);color:var(--brand);white-space:nowrap}.chip.ok{background:rgba(14,159,110,.15);color:var(--ok)}.chip.warn{background:rgba(217,119,6,.15);color:var(--warn)}.chip.bad{background:rgba(220,38,38,.15);color:var(--bad)}
+.bars div.b{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px}.bars .lab{width:130px;flex:none;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bars .tr{flex:1;background:var(--line);border-radius:99px;height:10px;overflow:hidden}.bars .tr i{display:block;height:100%;background:var(--brand)}
+#login,#mfa,#deny{max-width:420px;margin:12vh auto;padding:0 16px}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92%;z-index:60;text-align:center}#toast.show{opacity:1}#toast.bad{background:var(--bad);color:#fff}
+#modal{position:fixed;inset:0;background:rgba(10,15,30,.55);display:flex;align-items:flex-start;justify-content:center;padding:4vh 12px;overflow:auto;z-index:50}
+#modal .box{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;width:100%;max-width:640px}
+.warnbox{background:rgba(217,119,6,.12);border:1px solid var(--warn);border-radius:10px;padding:10px;font-size:13px;margin:8px 0}
+@media (max-width:860px){.shell{display:block}aside{width:auto;height:auto;position:static;flex-direction:row;overflow-x:auto;padding:8px;border-right:0;border-bottom:1px solid var(--line)}aside .logo,aside .sp{display:none}aside button.nav{padding:8px 11px}main{padding:14px 12px 60px}}
+</style>
+</head>
+<body>
+<div id="login" hidden><div class="card"><h1>Workly Admin</h1><p class="sub">Accès réservé à l’administrateur.</p>
+<label>E-mail</label><input id="lm" type="email" autocomplete="username"><label style="margin-top:10px">Mot de passe</label><input id="lp" type="password" autocomplete="current-password">
+<div class="row" style="margin-top:14px"><button id="lgo">Se connecter</button></div><p class="meta" id="lerr" style="color:var(--bad)"></p></div></div>
+<div id="mfa" hidden><div class="card"><h1>Double authentification</h1><p class="sub">Entre le code à 6 chiffres de ton application d’authentification.</p>
+<input id="mc" inputmode="numeric" maxlength="6" placeholder="123456"><div class="row" style="margin-top:14px"><button id="mgo">Valider</button><button class="ghost" id="mout">Se déconnecter</button></div><p class="meta" id="merr" style="color:var(--bad)"></p></div></div>
+<div id="deny" hidden><div class="card"><h1>Accès refusé</h1><p id="dmsg">Ce compte n’a pas les droits d’administration.</p><button id="dout">Se déconnecter</button></div></div>
+<div class="shell" id="app" hidden><aside id="side"></aside><main id="main"></main></div>
+<div id="modal" hidden><div class="box" id="box"></div></div><div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+const URL_="https://uenskswvwdziqxvafgyu.supabase.co",KEY_="sb_publishable_cF5MFw7jUNKDKV1LlRqkAQ_zTFMIRYt",OWNER="a81e2983-45bb-4874-9879-5d16242633aa",XOF=655.957;
+const HOME=location.pathname.replace(/\/workly-v2\/[^/]*$/,"/").replace(/[^/]*$/,"");
+const $=s=>document.querySelector(s),esc=t=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const SB=supabase.createClient(URL_,KEY_);
+const fd=d=>d?new Date(d).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"}):"—",fm=n=>n==null?"—":Math.round(n).toLocaleString("fr-FR")+" FCFA",fe=n=>n==null?"—":Number(n).toFixed(2).replace(".",",")+" €";
+let tt;function toast(m,bad){const t=$("#toast");t.textContent=m;t.className="show"+(bad?" bad":"");clearTimeout(tt);tt=setTimeout(()=>t.className="",3800)}
+function nice(e){const m=e.message||String(e);return e.code==="PGRST202"||/Could not find the function/i.test(m)?"Fonction absente dans Supabase : lance le script SQL 1b.":m}
+async function rpc(fn,args){const{data,error}=await SB.rpc(fn,args||{});if(error){const e=new Error(error.message);e.code=error.code;throw e}return data}
+async function safe(fn,args,def){try{return await rpc(fn,args)}catch(e){if(def!==undefined)return def;toast(nice(e),1);return null}}
+const addMonths=(d,n)=>{const x=new Date(d),day=x.getDate();x.setDate(1);x.setMonth(x.getMonth()+n);x.setDate(Math.min(day,new Date(x.getFullYear(),x.getMonth()+1,0).getDate()));return x};
+const defEnd=p=>addMonths(new Date(),p==="annuel"?12:1).toISOString().slice(0,10);
+const toTs=v=>v?new Date(v+"T23:59:59").toISOString():null;
+const showOnly=id=>["login","mfa","deny","app"].forEach(x=>$("#"+x).hidden=x!==id);
+function modal(h){$("#box").innerHTML=h;$("#modal").hidden=false}function closeModal(){$("#modal").hidden=true;$("#box").innerHTML=""}
+$("#modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal()});
+function askText(title,label,required){return new Promise(res=>{modal(`<h2>${esc(title)}</h2><label>${esc(label)}</label><textarea id="at" rows="3"></textarea><div class="row" style="margin-top:12px"><button id="aok">Confirmer</button><button class="ghost" id="ano">Annuler</button></div>`);$("#ano").onclick=()=>{closeModal();res(null)};$("#aok").onclick=()=>{const v=$("#at").value.trim();if(required&&!v){toast("Ce champ est obligatoire",1);return}closeModal();res(v)}})}
+const chipPlan=p=>`<span class="chip ${p==="gratuit"?"":"ok"}">${esc(p)}</span>`,chipV=s=>`<span class="chip ${s==="approved"?"ok":s==="rejected"?"bad":"warn"}">${s==="approved"?"vérifiée":s==="rejected"?"refusée":"en attente"}</span>`;
+function tbl(cols,rows,empty){if(!rows.length)return`<p class="meta">${empty||"Aucun résultat."}</p>`;return`<div class="tw"><table><thead><tr>${cols.map(c=>`<th>${c[0]}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td>${c[1](r)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`}
+function bars(items,total){const m=Math.max(1,...items.map(i=>i.n));return`<div class="bars">${items.map(i=>`<div class="b"><span class="lab" title="${esc(i.label)}">${esc(i.label)}</span><span class="tr"><i style="width:${i.n/m*100}%"></i></span><b>${i.n}</b></div>`).join("")||'<p class="meta">Aucune donnée.</p>'}</div>`}
+function columns(rows,keys,colors,h=150){if(!rows.length)return"";const W=600,bw=W/rows.length,mx=Math.max(1,...rows.map(r=>keys.reduce((s,k)=>s+(r[k]||0),0)));
+ let o="";rows.forEach((r,i)=>{let y=h-18;keys.forEach((k,j)=>{const v=r[k]||0,hh=v/mx*(h-30);y-=hh;if(v)o+=`<rect x="${i*bw+1}" y="${y}" width="${Math.max(bw-2,1)}" height="${hh}" rx="2" fill="${colors[j]}"><title>${r.day} · ${k} : ${v}</title></rect>`})});
+ return`<svg viewBox="0 0 ${W} ${h}" style="width:100%;height:auto">${o}<text x="0" y="${h-3}" font-size="10" fill="currentColor">${rows[0].day}</text><text x="${W}" y="${h-3}" font-size="10" text-anchor="end" fill="currentColor">${rows[rows.length-1].day}</text></svg>`}
+
+/* ---------- authentification et double authentification ---------- */
+$("#lgo").onclick=async()=>{$("#lerr").textContent="";const{error}=await SB.auth.signInWithPassword({email:$("#lm").value.trim(),password:$("#lp").value});if(error){$("#lerr").textContent="Identifiants incorrects";return}afterAuth()};
+const out=async()=>{await SB.auth.signOut();showOnly("login")};$("#mout").onclick=out;$("#dout").onclick=out;
+$("#mgo").onclick=async()=>{$("#merr").textContent="";const f=await SB.auth.mfa.listFactors();const fac=(f.data&&f.data.totp||[]).find(x=>x.status==="verified");if(!fac){$("#merr").textContent="Aucun facteur configuré";return}
+ const{error}=await SB.auth.mfa.challengeAndVerify({factorId:fac.id,code:$("#mc").value.trim()});if(error){$("#merr").textContent="Code incorrect";return}afterAuth()};
+let ME=null,PLANS=[],LIMS=[],COSTS=[];
+async function afterAuth(){
+ const{data:{session}}=await SB.auth.getSession();if(!session){showOnly("login");return}
+ const a=await SB.auth.mfa.getAuthenticatorAssuranceLevel();
+ if(a.data&&a.data.nextLevel==="aal2"&&a.data.currentLevel!=="aal2"){showOnly("mfa");return}
+ let me;try{me=await rpc("admin_me")}catch(e){try{me={is_admin:(await rpc("is_admin"))===true}}catch(e2){me={is_admin:false}}}
+ if(!me||!me.is_admin){$("#dmsg").textContent="Ce compte n’a pas les droits d’administration. Ces droits sont vérifiés par le serveur.";showOnly("deny");return}
+ ME={...me,uid:session.user.id,email:session.user.email};buildShell();showOnly("app");go("overview")}
+const SECS=[["overview","Vue générale","📊"],["users","Utilisateurs","👥"],["companies","Entreprises","🏢"],["subs","Abonnements","🎫"],["pays","Paiements","💳"],["credits","Crédits","🪙"],["plans","Formules et tarifs","🏷️"],["quotas","Quotas","📏"],["audit","Journal d’activité","📜"],["reports","Signalements","🚩"]];
+function buildShell(){$("#side").innerHTML=`<div class="logo">Workly <span>Admin</span></div>`+SECS.map(s=>`<button class="nav" data-s="${s[0]}">${s[2]} ${s[1]}</button>`).join("")+`<div class="sp"></div><button class="nav" id="b2fa">🔐 Double authentification</button><a class="nav" style="padding:9px 12px;color:var(--muted);text-decoration:none;font-weight:600" href="${HOME}">↩ Retour à Workly</a><button class="nav" id="bout">⎋ Déconnexion</button>`;
+ $("#side").querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>go(b.dataset.s));$("#b2fa").onclick=sec2fa;$("#bout").onclick=out}
+async function loadConfig(){const[p,l,c]=await Promise.all([SB.from("plans").select("*").order("sort"),SB.from("plan_limits").select("*"),SB.from("credit_costs").select("*").order("kind")]);PLANS=p.data||[];LIMS=l.data||[];COSTS=c.data||[]}
+let CUR="";async function go(s){CUR=s;$("#side").querySelectorAll("[data-s]").forEach(b=>b.classList.toggle("on",b.dataset.s===s));$("#main").innerHTML='<p class="meta">Chargement…</p>';window.scrollTo(0,0);
+ try{await loadConfig();await SEC[s]()}catch(e){$("#main").innerHTML=`<div class="card"><h2>Erreur</h2><p>${esc(nice(e))}</p></div>`}}
+const page=(t,sub,h)=>{$("#main").innerHTML=`<h1>${t}</h1><p class="sub">${sub||""}</p>${h}`};
+const SEC={};
+const planName=(aud,id)=>(PLANS.find(p=>p.audience===aud&&p.id===id)||{}).name||id;
+
+/* ---------- 1. Vue générale ---------- */
+SEC.overview=async()=>{
+ const st=await safe("admin_stats");if(!st)return;const ex=await safe("admin_stats_extra",{},null);
+ const pc={};(ex&&ex.plans||[]).forEach(x=>pc[x.role+"/"+x.plan]=x.n);
+ const cards=[["Candidats",st.candidats],["Entreprises",st.entreprises],["Entreprises à valider",st.entreprises_en_attente],["Comptes payants",st.comptes_payants],["Offres actives",st.offres_actives],["Candidatures",st.candidatures],["Messages",st.messages],["Signalements ouverts",st.signalements_ouverts],["Comptes suspendus",st.comptes_suspendus]].filter(c=>c[1]!==undefined);
+ const paid=ex?`<div class="card"><h2>Abonnés par formule</h2>${bars([["Premium","candidat/premium"],["Starter","entreprise/starter"],["Business","entreprise/business"],["Pro","entreprise/pro"]].map(([l,k])=>({label:l,n:pc[k]||0})))}</div>`:"";
+ const charts=ex?`<div class="card"><h2>Inscriptions des 30 derniers jours</h2>${columns(ex.signups||[],["candidats","entreprises"],["var(--brand)","var(--orange)"])}<p class="meta"><span style="color:var(--brand)">■</span> candidats · <span style="color:var(--orange)">■</span> entreprises</p></div>
+  <div class="card"><h2>Candidatures des 30 derniers jours</h2>${columns(ex.applications||[],["n"],["var(--ok)"])}</div>
+  <div class="card"><h2>Offres actives par secteur</h2>${bars((ex.jobs_by_field||[]).map(x=>({label:x.field,n:x.n})))}</div>`:`<div class="warnbox">Les graphiques demandent le script SQL 1b (fonction admin_stats_extra).</div>`;
+ page("Vue générale","Données réelles issues de Supabase.",`<div class="grid">${cards.map(c=>`<div class="stat"><b>${c[1]}</b><span>${c[0]}</span></div>`).join("")}</div><div style="height:14px"></div>${paid}${charts}<div class="card"><h2>Contrôle de connexion</h2><p class="meta">Vérifie que chaque fonction administrative répond.</p><button id="chk">Lancer le contrôle</button><div id="chkr"></div></div>`);
+ $("#chk").onclick=async()=>{const L=[["admin_me",{}],["admin_stats",{}],["admin_stats_extra",{}],["admin_list_profiles",{lim:1}],["admin_list_subscriptions",{lim:1}],["admin_list_payments",{lim:1}],["admin_audit_list",{lim:1}],["admin_list_reports",{st:"",lim:1}]];let h="";
+  for(const[f,a]of L){try{await rpc(f,a);h+=`<div>✅ ${f}</div>`}catch(e){h+=`<div>❌ ${f} : ${esc(nice(e))}</div>`}}
+  for(const t of["plans","plan_limits","credit_costs"]){const r=await SB.from(t).select("*",{count:"exact",head:true});h+=r.error?`<div>❌ table ${t} : ${esc(r.error.message)}</div>`:`<div>✅ table ${t} (${r.count} lignes)</div>`}
+  $("#chkr").innerHTML=`<div style="margin-top:10px;font-size:14px">${h}</div>`}};
+
+/* ---------- 2. Utilisateurs ---------- */
+const U={q:"",r:"",p:0,n:25};
+SEC.users=async()=>{const d=await safe("admin_list_profiles",{q:U.q,r:U.r,lim:U.n,off:U.p*U.n});if(!d)return;const pages=Math.max(1,Math.ceil(d.total/U.n));
+ page("Utilisateurs",`${d.total} compte(s)`,`<div class="card"><div class="row"><div style="flex:2;min-width:180px"><label>Recherche (nom, e-mail, entreprise)</label><input id="uq" value="${esc(U.q)}"></div><div style="flex:1;min-width:130px"><label>Type</label><select id="ur"><option value="">Tous</option><option value="candidat" ${U.r==="candidat"?"selected":""}>Candidats</option><option value="entreprise" ${U.r==="entreprise"?"selected":""}>Entreprises</option></select></div><button id="ugo" style="align-self:flex-end">Filtrer</button></div></div>
+ <div class="card">${tbl([["Compte",r=>`<b>${esc(r.company||r.nom||"—")}</b><br><span class="meta">${esc(r.email)}</span>`],["Type",r=>esc(r.role)],["Formule",r=>chipPlan(r.plan)],["Crédits",r=>r.credits],["État",r=>(r.role==="entreprise"?chipV(r.verification_status):"")+(r.suspended?' <span class="chip bad">suspendu</span>':"")],["Inscrit",r=>fd(r.created_at)],["",r=>`<button class="sm" data-m="${r.id}">Gérer</button>`]],d.rows)}
+ <div class="row sb" style="margin-top:10px"><button class="ghost sm" id="up" ${U.p<=0?"disabled":""}>← Précédent</button><span class="meta">Page ${U.p+1} / ${pages}</span><button class="ghost sm" id="un" ${U.p+1>=pages?"disabled":""}>Suivant →</button></div></div>`);
+ const f=()=>{U.q=$("#uq").value.trim();U.r=$("#ur").value;U.p=0;SEC.users()};$("#ugo").onclick=f;$("#uq").onkeydown=e=>{if(e.key==="Enter")f()};$("#up").onclick=()=>{U.p--;SEC.users()};$("#un").onclick=()=>{U.p++;SEC.users()};
+ $("#main").querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>manage(d.rows.find(x=>x.id===b.dataset.m)))};
+function planOpts(role,cur){return PLANS.filter(p=>p.audience===role&&p.active||p.audience===role&&p.id===cur).map(p=>`<option value="${p.id}" ${p.id===cur?"selected":""}>${esc(p.name)} (${p.id})</option>`).join("")}
+async function manage(u){
+ const led=await safe("admin_credit_ledger",{uid:u.id,lim:5},[]);
+ modal(`<div class="row sb"><h2>${esc(u.company||u.nom||u.email)}</h2><button class="ghost sm" id="mc0">Fermer</button></div><p class="meta">${esc(u.email)} · ${esc(u.role)} · inscrit le ${fd(u.created_at)}${u.pays?" · "+esc(u.pays):""}</p>
+ <div class="card"><h2>Formule</h2><div class="grid"><div><label>Formule</label><select id="mp">${planOpts(u.role,u.plan)}</select></div><div><label>Période</label><select id="mper"><option value="mensuel">Mensuelle</option><option value="annuel">Annuelle</option></select></div><div><label>Fin de l’abonnement</label><input id="mend" type="date" value="${defEnd("mensuel")}"></div></div><label style="margin-top:8px">Note</label><input id="mnote"><div class="row" style="margin-top:10px"><button id="mapply">Appliquer la formule</button><button class="ghost" id="mprem">${u.plan!=="gratuit"?"Désactiver Premium":"Activer Premium"}</button></div><p class="meta">Actuellement : ${planName(u.role,u.plan)}. Les anciens abonnements restent dans l’historique.</p></div>
+ <div class="card"><h2>Crédits : ${u.credits}</h2><div class="grid"><div><label>Variation (+ ou −)</label><input id="mcd" type="number" value="10"></div><div style="grid-column:span 2"><label>Motif (obligatoire)</label><input id="mcr"></div></div><button style="margin-top:8px" id="mcrd">Modifier les crédits</button>${led.length?`<p class="meta" style="margin-top:8px">Derniers mouvements : ${led.map(l=>`${l.delta>0?"+":""}${l.delta} (${esc(l.reason)}, ${fd(l.created_at)})`).join(" · ")}</p>`:""}</div>
+ ${u.role==="entreprise"?`<div class="card"><h2>Vérification : ${chipV(u.verification_status)}</h2>${u.verification_note?`<p class="meta">Note : ${esc(u.verification_note)}</p>`:""}<div class="row"><button class="ok" data-v="approved">Approuver</button><button class="bad" data-v="rejected">Refuser</button><button class="ghost" data-v="pending">Remettre en attente</button></div></div>`:""}
+ <div class="card"><h2>Suspension ${u.suspended?'<span class="chip bad">suspendu</span>':""}</h2>${u.suspended?`<p class="meta">Motif : ${esc(u.suspended_reason||"—")}</p><button class="ok" id="msus0">Réactiver le compte</button>`:`<label>Motif (obligatoire)</label><input id="msr"><button class="bad" style="margin-top:8px" id="msus1">Suspendre le compte</button>`}</div>`);
+ $("#mc0").onclick=closeModal;
+ const sync=()=>{$("#mend").value=$("#mp").value==="gratuit"?"":defEnd($("#mper").value)};$("#mper").onchange=sync;$("#mp").onchange=sync;
+ const done=async m=>{toast(m);closeModal();if(CUR==="users")SEC.users();else go(CUR)};
+ $("#mapply").onclick=async()=>{const pl=$("#mp").value,per=$("#mper").value;if(!confirm(`Appliquer la formule « ${planName(u.role,pl)} » (${per}) à ${u.email} ?`))return;try{await rpc("admin_set_plan",{uid:u.id,new_plan:pl,new_period:per,ends:toTs($("#mend").value),note:$("#mnote").value.trim()||null});done("Formule appliquée")}catch(e){toast(nice(e),1)}};
+ $("#mprem").onclick=async()=>{const on=u.plan==="gratuit";if(!confirm((on?"Activer":"Désactiver")+" Premium pour "+u.email+" ?"))return;try{await rpc("admin_set_premium",{uid:u.id,on_off:on});done("Premium mis à jour")}catch(e){toast(nice(e),1)}};
+ $("#mcrd").onclick=async()=>{const dl=parseInt($("#mcd").value,10),rs=$("#mcr").value.trim();if(!dl){toast("Indique une variation",1);return}if(!rs){toast("Le motif est obligatoire",1);return}if(!confirm(`${dl>0?"Ajouter":"Retirer"} ${Math.abs(dl)} crédit(s) à ${u.email} ?`))return;try{await rpc("admin_adjust_credits",{uid:u.id,delta:dl,reason:rs});done("Crédits modifiés")}catch(e){toast(nice(e),1)}};
+ $("#box").querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>review(u,b.dataset.v,done));
+ if($("#msus1"))$("#msus1").onclick=async()=>{const rs=$("#msr").value.trim();if(!rs){toast("Le motif est obligatoire",1);return}if(!confirm("Suspendre "+u.email+" ? Ses offres actives seront désactivées."))return;try{const r=await rpc("admin_set_suspended",{uid:u.id,flag:true,reason:rs});done(r.auth_ban?"Compte suspendu et connexion bloquée":"Compte suspendu (blocage d’actions actif)")}catch(e){toast(nice(e),1)}};
+ if($("#msus0"))$("#msus0").onclick=async()=>{if(!confirm("Réactiver "+u.email+" ?"))return;try{await rpc("admin_set_suspended",{uid:u.id,flag:false});done("Compte réactivé")}catch(e){toast(nice(e),1)}}}
+async function review(u,dec,done){let note=null;
+ if(dec==="rejected"){note=await askText("Refuser l’entreprise","Motif du refus (visible dans le journal et la notification)",true);if(note===null)return;if(!confirm("Refuser cette entreprise ? Ses offres actives seront désactivées."))return}
+ else{if(dec==="approved"&&!confirm("Approuver "+(u.company||u.email)+" ?"))return;if(dec==="pending"&&!confirm("Remettre en attente ? Ses offres actives seront désactivées."))return;note=await askText(dec==="approved"?"Approuver":"Remettre en attente","Note (facultative)",false);if(note===null)return}
+ try{await rpc("admin_review_company",{uid:u.id,decision:dec,note:note||null});done("Décision enregistrée")}catch(e){toast(nice(e),1)}}
+
+/* ---------- 3. Entreprises ---------- */
+let CT="pending";
+SEC.companies=async()=>{const d=await safe("admin_list_profiles",{r:"entreprise",lim:200});if(!d)return;const all=d.rows,n=s=>all.filter(r=>r.verification_status===s).length;
+ const rows=CT==="all"?all:all.filter(r=>r.verification_status===CT);
+ page("Entreprises","Demandes de vérification",`<div class="row" style="margin-bottom:12px">${[["pending","En attente"],["approved","Vérifiées"],["rejected","Refusées"],["all","Toutes"]].map(([k,l])=>`<button class="${CT===k?"":"ghost"}" data-t="${k}">${l}${k==="all"?" ("+all.length+")":" ("+n(k)+")"}</button>`).join("")}</div><div class="card">${tbl([["Entreprise",r=>`<b>${esc(r.company||r.nom||"—")}</b><br><span class="meta">${esc(r.email)}</span>`],["Pays",r=>esc(r.pays||"—")],["Formule",r=>chipPlan(r.plan)],["Statut",r=>chipV(r.verification_status)+(r.suspended?' <span class="chip bad">suspendue</span>':"")],["Note",r=>esc(r.verification_note||"")],["Inscrite",r=>fd(r.created_at)],["",r=>`<div class="row"><button class="ok sm" data-a="approved" data-id="${r.id}">Approuver</button><button class="bad sm" data-a="rejected" data-id="${r.id}">Refuser</button><button class="ghost sm" data-a="pending" data-id="${r.id}">En attente</button></div>`]],rows,"Aucune entreprise dans cette catégorie.")}${d.total>200?'<p class="meta">Les 200 plus récentes sont affichées : utilise « Utilisateurs » pour les autres.</p>':""}</div>`);
+ $("#main").querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{CT=b.dataset.t;SEC.companies()});
+ $("#main").querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>review(all.find(x=>x.id===b.dataset.id),b.dataset.a,m=>{toast(m);SEC.companies()}))};
+
+/* ---------- sélecteur d'utilisateur ---------- */
+function userPicker(box,onPick){$(box).innerHTML=`<div class="row"><div style="flex:1;min-width:200px"><label>Rechercher un compte (e-mail ou nom)</label><input id="${box.slice(1)}q"></div><button style="align-self:flex-end" id="${box.slice(1)}go">Chercher</button></div><div id="${box.slice(1)}res" class="row" style="margin-top:8px"></div>`;
+ const go_=async()=>{const q=$(box+"q").value.trim();if(!q)return;const d=await safe("admin_list_profiles",{q,lim:8});if(!d)return;$(box+"res").innerHTML=d.rows.map(r=>`<button class="ghost sm" data-u="${r.id}">${esc(r.company||r.nom||r.email)} · ${esc(r.email)} · ${esc(r.plan)}</button>`).join("")||'<span class="meta">Aucun compte trouvé.</span>';$(box+"res").querySelectorAll("[data-u]").forEach(b=>b.onclick=()=>onPick(d.rows.find(x=>x.id===b.dataset.u)))};
+ $(box+"go").onclick=go_;$(box+"q").onkeydown=e=>{if(e.key==="Enter")go_()}}
+
+/* ---------- 4. Abonnements ---------- */
+let SF={};
+SEC.subs=async()=>{const subs=await safe("admin_list_subscriptions",{lim:200});if(!subs)return;
+ page("Abonnements","Formules, statuts et historique",`<div class="card"><h2>Attribuer une formule</h2><div id="sp"></div><div id="sform"></div></div><div class="card"><div class="row sb"><h2>Historique des abonnements</h2><button class="ghost sm" id="sexp">Appliquer les expirations</button></div>${tbl([["Compte",r=>`${esc(r.company||r.email)}<br><span class="meta">${esc(r.email)}</span>`],["Formule",r=>chipPlan(r.plan)+" "+(r.period==="annuel"?"annuelle":"mensuelle")],["Statut",r=>`<span class="chip ${r.status==="active"?"ok":r.status==="expired"||r.status==="canceled"?"":"warn"}">${esc(r.status)}</span>`],["Paiement",r=>esc(r.payment_status)],["Montant",r=>fm(r.amount_fcfa)],["Début",r=>fd(r.started_at)],["Fin",r=>fd(r.ends_at)],["Note",r=>esc(r.note||"")]],subs,"Aucun abonnement enregistré.")}</div>`);
+ userPicker("#sp",u=>{SF.u=u;$("#sform").innerHTML=`<p style="margin:10px 0 4px"><b>${esc(u.company||u.nom||u.email)}</b> <span class="meta">${esc(u.email)} · formule actuelle :</span> ${chipPlan(u.plan)}</p><div class="grid"><div><label>Formule</label><select id="sfp">${planOpts(u.role,u.plan)}</select></div><div><label>Période</label><select id="sfd"><option value="mensuel">Mensuelle</option><option value="annuel">Annuelle</option></select></div><div><label>Fin</label><input id="sfe" type="date" value="${defEnd("mensuel")}"></div></div><label style="margin-top:8px">Note</label><input id="sfn"><div class="row" style="margin-top:10px"><button id="sfa">Appliquer</button></div>`;
+  const sync=()=>{const pl=PLANS.find(p=>p.audience===u.role&&p.id===$("#sfp").value),per=$("#sfd").value;$("#sfe").value=$("#sfp").value==="gratuit"?"":defEnd(per)};$("#sfd").onchange=sync;$("#sfp").onchange=sync;
+  $("#sfa").onclick=async()=>{const pl=$("#sfp").value,per=$("#sfd").value;if(!confirm(`Attribuer « ${planName(u.role,pl)} » (${per}) à ${u.email} ?`))return;try{await rpc("admin_set_plan",{uid:u.id,new_plan:pl,new_period:per,ends:toTs($("#sfe").value),note:$("#sfn").value.trim()||null});toast("Formule attribuée");SEC.subs()}catch(e){toast(nice(e),1)}}});
+ $("#sexp").onclick=async()=>{if(!confirm("Passer à « expiré » les abonnements dont la date de fin est dépassée, et remettre ces comptes au gratuit ?"))return;const r=await safe("admin_expire_subscriptions");if(r){toast(r.n+" compte(s) repassé(s) au gratuit");SEC.subs()}}};
+
+/* ---------- 5. Paiements ---------- */
+SEC.pays=async()=>{const pays=await safe("admin_list_payments",{lim:200});if(!pays)return;const ok=pays.filter(p=>p.status==="succeeded"),tot=ok.reduce((s,p)=>s+p.amount_fcfa,0);
+ page("Paiements","Aucun prestataire n’est branché : les paiements sont enregistrés à la main après encaissement.",`<div class="grid"><div class="stat"><b>${fm(tot)}</b><span>Total encaissé (paiements réussis affichés)</span></div><div class="stat"><b>${pays.length}</b><span>Transactions</span></div></div><div style="height:14px"></div>
+ <div class="card"><h2>Enregistrer un paiement</h2><div id="pp"></div><div id="pform"></div></div><div class="card"><h2>Historique</h2><div class="row" style="margin-bottom:8px"><select id="pf" style="max-width:200px"><option value="">Tous les statuts</option>${["succeeded","pending","failed","refunded"].map(s=>`<option>${s}</option>`).join("")}</select></div><div id="plist"></div></div>`);
+ const draw=()=>{const f=$("#pf").value;$("#plist").innerHTML=tbl([["Date",r=>fd(r.created_at)],["Compte",r=>`${esc(r.company||r.email)}<br><span class="meta">${esc(r.email)}</span>`],["Montant",r=>fm(r.amount_fcfa)],["Fournisseur",r=>esc(r.provider)],["Référence",r=>esc(r.provider_ref||"—")],["Statut",r=>`<span class="chip ${r.status==="succeeded"?"ok":r.status==="failed"?"bad":"warn"}">${esc(r.status)}</span>`]],f?pays.filter(p=>p.status===f):pays,"Aucun paiement enregistré.")};$("#pf").onchange=draw;draw();
+ userPicker("#pp",async u=>{const subs=(await safe("admin_list_subscriptions",{lim:200},[])).filter(s=>s.user_id===u.id);
+  $("#pform").innerHTML=`<p style="margin:10px 0 4px"><b>${esc(u.company||u.nom||u.email)}</b> <span class="meta">${esc(u.email)}</span></p><div class="grid"><div><label>Montant (FCFA)</label><input id="pam" type="number" min="1"></div><div><label>Fournisseur</label><input id="ppv" value="manuel"></div><div><label>Référence</label><input id="ppr"></div><div><label>Abonnement lié</label><select id="pps"><option value="">Aucun</option>${subs.map(s=>`<option value="${s.id}">#${s.id} ${esc(s.plan)} ${esc(s.period)} (${esc(s.status)})</option>`).join("")}</select></div></div><button style="margin-top:10px" id="pgo">Enregistrer le paiement</button>`;
+  $("#pps").onchange=()=>{const s=subs.find(x=>String(x.id)===$("#pps").value);if(s&&s.amount_fcfa)$("#pam").value=s.amount_fcfa};
+  $("#pgo").onclick=async()=>{const a=parseInt($("#pam").value,10);if(!(a>0)){toast("Montant invalide",1);return}if(!confirm(`Enregistrer ${fm(a)} pour ${u.email} ?`))return;try{await rpc("admin_record_payment",{uid:u.id,amount:a,sub_id:$("#pps").value?+$("#pps").value:null,prov:$("#ppv").value.trim()||"manuel",ref:$("#ppr").value.trim()||null});toast("Paiement enregistré");SEC.pays()}catch(e){toast(nice(e),1)}}})};
+
+/* ---------- 6. Crédits ---------- */
+SEC.credits=async()=>{page("Crédits","Un motif est obligatoire pour chaque mouvement. Chaque opération est inscrite au journal.",`<div class="card"><div id="cp"></div><div id="cform"></div></div>`);
+ userPicker("#cp",async u=>{const led=await safe("admin_credit_ledger",{uid:u.id,lim:20},[]);
+  $("#cform").innerHTML=`<p style="margin:10px 0"><b>${esc(u.company||u.nom||u.email)}</b> <span class="meta">${esc(u.email)}</span> — solde : <b>${u.credits}</b> crédit(s)</p><div class="grid"><div><label>Variation (+ ou −)</label><input id="cd" type="number" value="10"></div><div style="grid-column:span 2"><label>Motif (obligatoire)</label><input id="cr"></div></div><button style="margin-top:10px" id="cgo">Appliquer</button><h2 style="margin-top:16px">Derniers mouvements</h2>${tbl([["Date",r=>fd(r.created_at)],["Variation",r=>(r.delta>0?"+":"")+r.delta],["Motif",r=>esc(r.reason)]],led,"Aucun mouvement.")}`;
+  $("#cgo").onclick=async()=>{const dl=parseInt($("#cd").value,10),rs=$("#cr").value.trim();if(!dl){toast("Indique une variation",1);return}if(!rs){toast("Le motif est obligatoire",1);return}if(!confirm(`${dl>0?"Ajouter":"Retirer"} ${Math.abs(dl)} crédit(s) à ${u.email} ?`))return;try{const r=await rpc("admin_adjust_credits",{uid:u.id,delta:dl,reason:rs});toast("Nouveau solde : "+r.credits);u.credits=r.credits;$("#cp").querySelector("[data-u]")&&0;SEC.credits()}catch(e){toast(nice(e),1)}}})};
+
+/* ---------- 7. Formules et tarifs ---------- */
+SEC.plans=async()=>{const hasA=PLANS.some(p=>"annual_price_fcfa" in p);
+ const lim=(a,i)=>LIMS.filter(l=>l.audience===a&&l.plan_id===i);
+ const tableFor=aud=>`<div class="card"><h2>${aud==="candidat"?"Particuliers":"Entreprises"}</h2>${PLANS.filter(p=>p.audience===aud).map(p=>{const m=p.price_fcfa||0,a=p.annual_price_fcfa,reco=m*10,disc=m&&a?Math.round((1-a/(m*12))*100):null;return`<div style="border-top:1px solid var(--line);padding:12px 0" data-p="${aud}|${p.id}"><div class="row sb"><b>${esc(p.name)} <span class="meta">(${p.id})</span></b><label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" class="pact" ${p.active?"checked":""}> active</label></div><div class="grid" style="margin-top:8px"><div><label>Nom affiché</label><input class="pn" value="${esc(p.name)}"></div><div><label>Prix mensuel (FCFA)</label><input class="pf" type="number" min="0" value="${p.price_fcfa??""}"></div><div><label>Prix mensuel (€)</label><input class="pe" type="number" step="0.01" min="0" value="${p.price_eur??""}"></div>${hasA?`<div><label>Prix annuel (FCFA)</label><input class="paf" type="number" min="0" value="${a??""}"></div><div><label>Prix annuel (€)</label><input class="pae" type="number" step="0.01" min="0" value="${p.annual_price_eur??""}"></div>`:""}</div>
+ <p class="meta" style="margin:6px 0">${m?`Règle « 2 mois offerts » : ${fm(reco)} / an${a?` · tarif annuel actuel ${fm(a)} (${disc}% de remise sur 12 mensualités, équivalent ${fm(a/12)} / mois)${a>m*12?' <b style="color:var(--bad)">⚠ supérieur à 12 mensualités</b>':""}`:""}`:"Formule gratuite"}</p>
+ <p class="meta" style="margin:0 0 8px">Inclus : ${lim(aud,p.id).map(l=>`${esc(KL[l.key]||l.key)} : <b>${l.value===-1?"illimité":l.value}</b>`).join(" · ")||"—"} <a href="#" data-q="1">(modifier dans Quotas)</a></p><button class="sm" data-save="1">Enregistrer cette formule</button></div>`}).join("")}</div>`;
+ page("Formules et tarifs","Les prix mensuels actuels sont conservés. Les prix annuels suivent la règle des deux mois offerts.",`${hasA?"":'<div class="warnbox">Les prix annuels configurables demandent le script SQL 1b. En attendant, l’annuel est calculé automatiquement à 10 mensualités.</div>'}${tableFor("entreprise")}${tableFor("candidat")}
+ <div class="card"><h2>Étude d’une offre spéciale annuelle (indicative, non appliquée)</h2><p class="meta">Teste la rentabilité avant toute décision. Aucune valeur n’est enregistrée.</p><div class="grid"><div><label>Prix annuel proposé (€)</label><input id="xe" type="number" value="195"></div><div><label>Frais de paiement (%)</label><input id="xf" type="number" step="0.1" value="3"></div><div><label>Coût mensuel estimé par client (FCFA)</label><input id="xc" type="number" placeholder="à renseigner"></div></div><div id="xr" style="margin-top:10px"></div></div>`);
+ $("#main").querySelectorAll("[data-q]").forEach(a=>a.onclick=e=>{e.preventDefault();go("quotas")});
+ $("#main").querySelectorAll("[data-save]").forEach(b=>b.onclick=async()=>{const w=b.closest("[data-p]"),[aud,id]=w.dataset.p.split("|"),v=c=>{const x=w.querySelector(c);return x&&x.value!==""?Number(x.value):null};
+  const fc=v(".pf"),eu=v(".pe"),af=v(".paf"),ae=v(".pae");if(fc!==null&&af!==null&&af>fc*12){toast("Le tarif annuel dépasse 12 mensualités",1);return}
+  if(!confirm("Enregistrer les tarifs de « "+w.querySelector(".pn").value+" » ? Les abonnements déjà souscrits ne changent pas."))return;
+  try{await rpc("admin_update_plan",{aud,pid:id,new_name:w.querySelector(".pn").value.trim(),new_fcfa:fc,new_eur:eu,is_active:w.querySelector(".pact").checked});if(hasA)await rpc("admin_update_plan_annual",{aud,pid:id,annual_fcfa:af,annual_eur:ae});toast("Formule enregistrée");SEC.plans()}catch(e){toast(nice(e),1)}});
+ const calc=()=>{const e=+$("#xe").value,f=(+$("#xf").value||0)/100,c=$("#xc").value===""?null:+$("#xc").value,fc=e*XOF,net=fc*(1-f),pro=PLANS.find(p=>p.audience==="entreprise"&&p.id==="pro"),m=pro&&pro.price_fcfa,ann=pro&&pro.annual_price_fcfa;
+  $("#xr").innerHTML=`<div class="grid"><div class="stat"><b>${fm(fc)}</b><span>${fe(e)} / an</span></div><div class="stat"><b>${fm(fc/12)}</b><span>équivalent par mois</span></div><div class="stat"><b>${fm(net)}</b><span>net après frais (${(f*100).toFixed(1)} %)</span></div>${m?`<div class="stat"><b>${Math.round((1-fc/(m*12))*100)} %</b><span>de remise vs 12 mensualités (${fm(m*12)})</span></div>`:""}${ann?`<div class="stat"><b>${Math.round((1-fc/ann)*100)} %</b><span>de remise vs tarif annuel (${fm(ann)})</span></div>`:""}${c!==null?`<div class="stat"><b style="color:${net-12*c>=0?"var(--ok)":"var(--bad)"}">${fm(net-12*c)}</b><span>marge annuelle estimée</span></div><div class="stat"><b>${fm(net/12)}</b><span>coût mensuel maximal pour ne pas perdre d’argent</span></div>`:'<div class="stat"><b>—</b><span>renseigne ton coût mensuel par client pour calculer la marge</span></div>'}</div><p class="meta" style="margin-top:8px">Aucune donnée de coût réel n’existe encore dans la base (IA, stockage, support). Prudence : une remise aussi forte ne se justifie qu’en offre de lancement limitée (nombre de clients, première année, quotas plafonnés).</p>`};
+ ["xe","xf","xc"].forEach(i=>$("#"+i).oninput=calc);calc()};
+
+/* ---------- 8. Quotas ---------- */
+const KL={analyse_per_month:"Analyses de CV / mois",adapt_per_month:"CV adaptés / mois",cv_per_month:"Créations de CV / mois",entretien_per_month:"Retours d’entretien IA / mois",chat_per_month:"Messages Evolia / mois",offre_per_month:"Descriptions d’offre IA / mois",jobs_per_month:"Offres publiées / mois",posts_per_day:"Publications / jour",media_posts:"Photos dans les publications (0/1)",board:"Tableau de suivi (0/1)",talent_pool:"Vivier de talents (0/1)",recruiter_level:"Niveau Recruiter (0 à 3)",invites_per_month:"Invitations / mois",insights_level:"Niveau Insights (0 à 2)",promoted_jobs:"Offres sponsorisées (0/1)",ads:"Publicités (0/1)"};
+const CL={analyse:"Analyse de CV",adapt:"CV adapté",cv:"Création de CV",entretien:"Entretien IA",chat:"Message Evolia",offre:"Description d’offre IA"};
+SEC.quotas=async()=>{const blk=aud=>{const ps=PLANS.filter(p=>p.audience===aud),keys=[...new Set(LIMS.filter(l=>l.audience===aud).map(l=>l.key))];
+  return`<div class="card"><h2>${aud==="candidat"?"Particuliers":"Entreprises"}</h2><div class="tw"><table><thead><tr><th>Fonction</th>${ps.map(p=>`<th>${esc(p.name)}</th>`).join("")}</tr></thead><tbody>${keys.map(k=>`<tr><td>${esc(KL[k]||k)}</td>${ps.map(p=>{const l=LIMS.find(x=>x.audience===aud&&x.plan_id===p.id&&x.key===k);return`<td><input type="number" min="-1" style="width:90px" value="${l?l.value:""}" data-aud="${aud}" data-pid="${p.id}" data-k="${k}"></td>`}).join("")}</tr>`).join("")}</tbody></table></div></div>`};
+ page("Quotas","-1 signifie illimité. Les limites sont appliquées par le serveur. Chaque modification est inscrite au journal.",`${blk("entreprise")}${blk("candidat")}<div class="card"><h2>Coût en crédits quand le quota est atteint</h2>${tbl([["Action",r=>esc(CL[r.kind]||r.kind)],["Crédits",r=>`<input type="number" min="0" style="width:90px" value="${r.cost}" data-ck="${r.kind}">`]],COSTS)}</div>`);
+ $("#main").querySelectorAll("[data-k]").forEach(i=>i.onchange=async()=>{const v=parseInt(i.value,10);if(isNaN(v)||v<-1){toast("Valeur invalide",1);return}try{await rpc("admin_set_limit",{aud:i.dataset.aud,pid:i.dataset.pid,k:i.dataset.k,v});toast("Quota enregistré")}catch(e){toast(nice(e),1)}});
+ $("#main").querySelectorAll("[data-ck]").forEach(i=>i.onchange=async()=>{const v=parseInt(i.value,10);if(isNaN(v)||v<0){toast("Valeur invalide",1);return}try{await rpc("admin_set_credit_cost",{k:i.dataset.ck,c:v});toast("Coût enregistré")}catch(e){toast(nice(e),1)}})};
+
+/* ---------- 9. Journal ---------- */
+SEC.audit=async()=>{const rows=await safe("admin_audit_list",{lim:300});if(!rows)return;
+ page("Journal d’activité","Toutes les opérations administratives, avec date, heure et auteur.",`<div class="card"><div class="row"><div style="flex:1"><label>Filtrer (action, cible, détail)</label><input id="aq"></div></div><div id="al" style="margin-top:10px"></div></div>`);
+ const draw=()=>{const q=$("#aq").value.toLowerCase();$("#al").innerHTML=tbl([["Date",r=>fd(r.created_at)],["Auteur",r=>r.admin_id===ME.uid?"Moi ("+esc(ME.email)+")":esc(String(r.admin_id||"").slice(0,8))],["Action",r=>`<span class="chip">${esc(r.action)}</span>`],["Cible",r=>`<span class="meta">${esc(r.target||"—")}</span>`],["Détail",r=>`<code style="font-size:12px;word-break:break-word">${esc(JSON.stringify(r.detail))}</code>`]],rows.filter(r=>!q||JSON.stringify(r).toLowerCase().includes(q)),"Aucune opération enregistrée.")};$("#aq").oninput=draw;draw()};
+
+/* ---------- 10. Signalements ---------- */
+let RS="open";
+SEC.reports=async()=>{let rows;try{rows=await rpc("admin_list_reports",{st:RS==="all"?"":RS,lim:200})}catch(e){page("Signalements","",`<div class="warnbox">${esc(nice(e))}</div>`);return}
+ page("Signalements","Signalements d’offres envoyés par les utilisateurs.",`<div class="row" style="margin-bottom:12px">${[["open","Ouverts"],["resolved","Traités"],["rejected","Rejetés"],["all","Tous"]].map(([k,l])=>`<button class="${RS===k?"":"ghost"}" data-s="${k}">${l}</button>`).join("")}</div><div class="card">${tbl([["Date",r=>fd(r.created_at)],["Cible",r=>r.job_title?`<b>${esc(r.job_title)}</b><br><span class="meta">${esc(r.job_company||"")} ${r.job_active?"· offre active":"· offre inactive"}</span>`:esc(r.target_type+" "+(r.target_id||""))],["Motif",r=>esc(r.reason||"—")],["Signalé par",r=>esc(r.reporter_email||"—")],["Statut",r=>`<span class="chip ${r.status==="open"?"warn":r.status==="resolved"?"ok":""}">${esc(r.status)}</span>`],["Note",r=>esc(r.note||"")],["",r=>r.status==="open"?`<div class="row"><button class="ok sm" data-r="resolved" data-id="${r.id}">Clôturer</button>${r.job_title&&r.job_active?`<button class="bad sm" data-r="deact" data-id="${r.id}">Clôturer et désactiver l’offre</button>`:""}<button class="ghost sm" data-r="rejected" data-id="${r.id}">Rejeter</button></div>`:""]],rows,"Aucun signalement dans cette catégorie.")}</div>`);
+ $("#main").querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>{RS=b.dataset.s;SEC.reports()});
+ $("#main").querySelectorAll("[data-r]").forEach(b=>b.onclick=async()=>{const k=b.dataset.r,note=await askText("Traiter le signalement","Note (facultative)",false);if(note===null)return;if(k==="deact"&&!confirm("Désactiver l’offre signalée ?"))return;
+  try{await rpc("admin_resolve_report",{rid:+b.dataset.id,new_status:k==="rejected"?"rejected":"resolved",deactivate:k==="deact",note_text:note||null});toast("Signalement traité");SEC.reports()}catch(e){toast(nice(e),1)}})};
+
+/* ---------- double authentification ---------- */
+async function sec2fa(){const f=await SB.auth.mfa.listFactors(),a=await SB.auth.mfa.getAuthenticatorAssuranceLevel(),fac=(f.data&&f.data.totp||[]).filter(x=>x.status==="verified"),me=await safe("admin_me",{},ME);
+ modal(`<div class="row sb"><h2>Double authentification</h2><button class="ghost sm" id="f0">Fermer</button></div><p>Application d’authentification : <b>${fac.length?"configurée":"non configurée"}</b> · session actuelle : <b>${a.data?a.data.currentLevel:"?"}</b> · exigée par le serveur : <b>${me&&me.require_mfa?"oui":"non"}</b></p>
+ ${fac.length?"":`<div class="card"><p class="meta">Scanne le code avec Google Authenticator, Microsoft Authenticator ou une application équivalente.</p><button id="fen">Configurer</button><div id="fqr"></div></div>`}
+ ${fac.length?`<div class="card"><p class="meta">Quand l’exigence serveur est activée, aucune opération administrative n’est acceptée sans code validé. Si tu perds ton application, tu devras désactiver cette exigence par SQL : <code>update public.admins set require_mfa = false where user_id = '${ME.uid}';</code></p>${me&&me.require_mfa?`<button class="ghost" id="fr0">Désactiver l’exigence</button>`:`<button id="fr1">Exiger la double authentification</button>`}</div>`:""}`);
+ $("#f0").onclick=closeModal;
+ if($("#fen"))$("#fen").onclick=async()=>{const r=await SB.auth.mfa.enroll({factorType:"totp",friendlyName:"Workly Admin "+Date.now()});if(r.error){toast(r.error.message,1);return}
+  $("#fqr").innerHTML=`<div style="margin:12px 0"><img alt="QR" src="${r.data.totp.qr_code}" style="width:180px;height:180px;background:#fff;padding:6px;border-radius:8px"><p class="meta">Code manuel : <code>${esc(r.data.totp.secret)}</code></p></div><label>Code à 6 chiffres</label><input id="fc" inputmode="numeric" maxlength="6"><button style="margin-top:8px" id="fv">Valider</button>`;
+  $("#fv").onclick=async()=>{const v=await SB.auth.mfa.challengeAndVerify({factorId:r.data.id,code:$("#fc").value.trim()});if(v.error){toast("Code incorrect",1);return}toast("Double authentification activée");sec2fa()}};
+ if($("#fr1"))$("#fr1").onclick=async()=>{if(a.data&&a.data.currentLevel!=="aal2"){toast("Valide d’abord ton code : reconnecte-toi puis réessaie",1);return}if(!confirm("Exiger le code à 2 facteurs pour toutes les opérations administratives ?"))return;try{await rpc("admin_set_my_mfa",{flag:true});toast("Exigence activée");sec2fa()}catch(e){toast(nice(e),1)}};
+ if($("#fr0"))$("#fr0").onclick=async()=>{if(!confirm("Désactiver l’exigence de double authentification côté serveur ?"))return;try{await rpc("admin_set_my_mfa",{flag:false});toast("Exigence désactivée");sec2fa()}catch(e){toast(nice(e),1)}}}
+SB.auth.onAuthStateChange(ev=>{if(ev==="SIGNED_OUT")showOnly("login")});
+afterAuth();
+</script>
+</body>
+</html>
