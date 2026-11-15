@@ -598,5 +598,41 @@ function boot(){SB=supabase.createClient("https://uenskswvwdziqxvafgyu.supabase.
 $("#view").innerHTML='<p class="meta">Chargement…</p>';
 if(window.supabase)boot();else{const s=document.createElement("script");s.src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js";s.onload=boot;s.onerror=fail;document.head.appendChild(s)}
 </script>
+<script>
+/* Workly : sponsorisation "À la une" et "Urgent". Bloc indépendant : s'il échoue, le reste du site continue de marcher. */
+try{
+const feat=j=>j.featured_until&&new Date(j.featured_until)>new Date(),urg=j=>j.urgent_until&&new Date(j.urgent_until)>new Date();
+const bdg=j=>(feat(j)?'<span class="chip v">⭐ À la une</span>':"")+(urg(j)?'<span class="chip warn">🔥 Urgent</span>':"");
+
+/* 1. Liste des offres : badges + offres sponsorisées en tête */
+const _list=list;
+list=function(){_list();const L=$("#list");if(!L)return;
+ const cs=[...L.children].map((el,i)=>{const b=el.querySelector('[data-a="detail"]');return{el,i,j:b?jobs().find(x=>x.id==b.dataset.id):null}});
+ cs.forEach(x=>{if(x.j&&bdg(x.j)){const c=x.el.querySelector(".chips");if(c)c.insertAdjacentHTML("afterbegin",bdg(x.j))}});
+ cs.sort((a,b)=>((b.j&&feat(b.j)?1:0)-(a.j&&feat(a.j)?1:0))||((b.j&&urg(b.j)?1:0)-(a.j&&urg(a.j)?1:0))||a.i-b.i).forEach(x=>L.appendChild(x.el))};
+
+/* 2. Page d'une offre : badges */
+const _vo=vOffre;
+vOffre=function(){_vo();const j=jobs().find(x=>x.id===S.cur)||S.mine.find(x=>x.id===S.cur);
+ const c=j&&document.querySelector("#view .chips");if(c&&bdg(j))c.insertAdjacentHTML("afterbegin",bdg(j))};
+
+/* 3. Espace recruteur : bouton Sponsoriser + panneau */
+const spCard=j=>`<div class="card"><h2>🚀 Sponsoriser : ${esc(j.title)}</h2><p class="meta">Tes crédits : <b>${S.user.credits||0}</b></p><div class="grid"><div><label>Type</label><select id="spk"><option value="featured">⭐ À la une</option><option value="urgent">🔥 Urgent</option></select></div><div><label>Durée</label><select id="spd"><option value="7">7 jours</option><option value="15">15 jours</option><option value="30">30 jours</option></select></div></div><p class="meta">Prix en crédits (7 / 15 / 30 jours) : À la une 10 / 18 / 30 · Urgent 5 / 9 / 15</p><div class="btns"><button data-a="spgo">Sponsoriser</button><button class="ghost" data-a="spx">Fermer</button></div></div>`;
+const _vr=vRec;
+vRec=function(){_vr();
+ document.querySelectorAll('#view [data-a="dup"]').forEach(b=>b.insertAdjacentHTML("afterend",`<button class="ghost" data-a="sponsor" data-id="${b.dataset.id}">🚀 Sponsoriser</button>`));
+ const j=S.mine.find(x=>x.id===S.sp);
+ if(j){const h=[...document.querySelectorAll("#view h2")].find(x=>x.textContent.startsWith("Mes offres")),card=h&&h.closest(".card");if(card)card.insertAdjacentHTML("beforebegin",spCard(j))}};
+
+/* 4. Actions */
+A.sponsor=id=>{S.sp=+id;vRec();window.scrollTo(0,0)};
+A.spx=()=>{S.sp=null;vRec()};
+A.spgo=async()=>{
+ const r=await SB.rpc("sponsor_job",{p_job:S.sp,p_kind:$("#spk").value,p_days:+$("#spd").value});
+ if(r.error||!r.data){toast("Erreur : "+(r.error?r.error.message:"inconnue"));return}
+ if(!r.data.ok){toast(r.data.reason==="credits"?"Crédits insuffisants":"Action refusée");if(r.data.reason==="credits")go("tarifs");return}
+ S.sp=null;await loadAll();toast("Offre sponsorisée jusqu’au "+new Date(r.data.until).toLocaleDateString("fr-FR"));render()};
+}catch(e){console.error("Sponsorisation :",e)}
+</script>
 </body>
 </html>
