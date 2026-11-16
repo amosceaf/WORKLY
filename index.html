@@ -741,5 +741,63 @@ A.coabsave=async()=>{
  toast("Présentation enregistrée");A.co(S.uid)};
 }catch(e){console.error(e)}
 </script>
+<script>
+/* Workly : réactions, commentaires, partage et fil d'actualité. Bloc indépendant. */
+try{
+const RX={like:["👍","J’aime"],love:["❤️","J’adore"],haha:["😂","Haha"],wow:["😮","Wow"],sad:["😢","Triste"],clap:["👏","Bravo"]};
+const SOC={};let LP=false,T1=null;
+const fd=d=>new Date(d).toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"numeric"});
+const photosHtml=a=>(a||[]).length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${a.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="" loading="lazy" style="width:160px;height:120px;object-fit:cover;border-radius:10px"></a>`).join("")}</div>`:"";
+
+/* Barre sociale injectée sous chaque post */
+const socHtml=pid=>`<div class="soc" data-pid="${pid}" style="margin-top:12px;border-top:1px solid var(--line);padding-top:8px"><div class="meta socsum"></div><div class="btns" style="margin-top:6px;position:relative"><button class="rxb ghost" data-a="rx" data-id="${pid}|like">👍 J’aime</button><button class="ghost" data-a="cmt" data-id="${pid}">💬 Commenter</button><button class="ghost" data-a="shr" data-id="${pid}">↗️ Partager</button></div><div class="cmts"></div></div>`;
+async function refreshSoc(ids){const r=await SB.rpc("post_social",{p_ids:ids.map(Number)});if(r.error||!r.data)return;Object.assign(SOC,r.data);paintSoc()}
+function paintSoc(){document.querySelectorAll("#view .soc").forEach(el=>{const d=SOC[el.dataset.pid]||{counts:{},mine:null,comments:0},cs=d.counts||{},tot=Object.values(cs).reduce((a,b)=>a+(+b),0),
+ top=Object.entries(cs).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k])=>RX[k]?RX[k][0]:"").join(""),m=d.mine&&RX[d.mine],b=el.querySelector(".rxb");
+ el.querySelector(".socsum").textContent=(tot?top+" "+tot:"")+(tot&&d.comments?" · ":"")+(d.comments?d.comments+" commentaire(s)":"");
+ b.textContent=m?m[0]+" "+m[1]:"👍 J’aime";b.className="rxb "+(m?"":"ghost")})}
+let busy=false;
+new MutationObserver(()=>{if(busy||!S.user)return;busy=true;requestAnimationFrame(()=>{busy=false;const ids=[];
+ document.querySelectorAll("#view .card").forEach(c=>{if(c.querySelector(".soc"))return;const b=c.querySelector('[data-a="codel"],[data-a="corep"]'),pid=c.dataset.pid||(b&&b.dataset.id);
+  if(pid){c.insertAdjacentHTML("beforeend",socHtml(pid));ids.push(pid)}});
+ if(ids.length)refreshSoc(ids)})}).observe($("#view"),{childList:true,subtree:true});
+
+/* Sélecteur de réactions : appui long ou survol */
+function picker(btn){document.querySelectorAll(".rxp").forEach(x=>x.remove());const pid=btn.dataset.id.split("|")[0];
+ btn.parentElement.insertAdjacentHTML("beforeend",`<div class="rxp" style="position:absolute;bottom:48px;left:0;display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:6px 12px;box-shadow:0 6px 24px rgba(0,0,0,.25);z-index:5">${Object.entries(RX).map(([k,v])=>`<button class="lnk" title="${v[1]}" style="font-size:26px;padding:2px 4px" data-a="rx" data-id="${pid}|${k}">${v[0]}</button>`).join("")}</div>`)}
+document.addEventListener("pointerdown",e=>{const b=e.target.closest(".rxb");if(!b)return;clearTimeout(T1);T1=setTimeout(()=>{LP=true;picker(b)},450)});
+["pointerup","pointerleave","pointercancel"].forEach(t=>document.addEventListener(t,e=>{if(e.target.closest&&e.target.closest(".rxb")){clearTimeout(T1);setTimeout(()=>{LP=false},300)}}));
+document.addEventListener("contextmenu",e=>{if(e.target.closest(".rxb"))e.preventDefault()});
+document.addEventListener("mouseover",e=>{const b=e.target.closest(".rxb");if(!b||e.pointerType==="touch")return;clearTimeout(T1);T1=setTimeout(()=>picker(b),500)});
+document.addEventListener("mouseout",e=>{if(e.target.closest&&e.target.closest(".rxb"))clearTimeout(T1)});
+document.addEventListener("click",e=>{if(!e.target.closest(".rxp,.rxb"))document.querySelectorAll(".rxp").forEach(x=>x.remove())});
+
+A.rx=async(v,b)=>{const[pid,k]=v.split("|"),main=b&&b.classList.contains("rxb");if(main&&LP){LP=false;return}
+ document.querySelectorAll(".rxp").forEach(x=>x.remove());if(!S.user){toast("Connecte-toi pour réagir");return}
+ const cur=(SOC[pid]||{}).mine,kind=main?(cur?"":"like"):(cur===k?"":k);
+ const r=await SB.rpc("react_post",{p_post:+pid,p_kind:kind});if(r.error){toast(r.error.message);return}refreshSoc([pid])};
+
+/* Commentaires */
+async function loadCmts(pid){const el=document.querySelector(`.soc[data-pid="${pid}"] .cmts`);if(!el)return;const r=await SB.rpc("comments_list",{p_post:+pid}),L=r.data||[];
+ el.innerHTML=L.map(c=>`<div style="display:flex;gap:8px;margin-top:8px">${av(c.logo,c.name,28)}<div style="background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:6px 10px;min-width:0"><b style="font-size:13px">${esc(c.name)}</b> <span class="meta" style="font-size:12px">${fd(c.at)}</span>${c.canDel?` <button class="lnk" data-a="cmtdel" data-id="${c.id}|${pid}">Supprimer</button>`:""}<div style="white-space:pre-wrap">${esc(c.body)}</div></div></div>`).join("")
+ +`<div style="display:flex;gap:8px;margin-top:8px"><input id="cmi-${pid}" maxlength="500" placeholder="Écrire un commentaire…"><button data-a="cmtsend" data-id="${pid}">Envoyer</button></div>`}
+A.cmt=pid=>{const el=document.querySelector(`.soc[data-pid="${pid}"] .cmts`);if(!el)return;if(el.innerHTML){el.innerHTML="";return}loadCmts(pid)};
+A.cmtsend=async pid=>{const i=$("#cmi-"+pid),t=i?i.value.trim():"";if(!t)return;const r=await SB.rpc("add_comment",{p_post:+pid,p_body:t});if(r.error){toast(r.error.message);return}await loadCmts(pid);refreshSoc([pid])};
+A.cmtdel=async v=>{const[id,pid]=v.split("|");if(!confirm("Supprimer ce commentaire ?"))return;const r=await SB.rpc("delete_comment",{p_id:+id});if(r.error){toast(r.error.message);return}await loadCmts(pid);refreshSoc([pid])};
+
+/* Partage */
+A.shr=async pid=>{const u=location.origin+location.pathname,c=document.querySelector(`.soc[data-pid="${pid}"]`).closest(".card"),t=((c.querySelector(".pbody,div[style*='pre-wrap']")||{}).textContent||"").slice(0,120);
+ try{if(navigator.share){await navigator.share({title:"Workly",text:t,url:u});return}await navigator.clipboard.writeText((t+" "+u).trim());toast("Lien copié")}catch(e){}};
+
+/* Fil d'actualité */
+async function openFeed(){$("#view").innerHTML='<p class="meta">Chargement…</p>';const r=await SB.rpc("my_feed"),L=r.data||[];
+ $("#view").innerHTML=`<p><button class="lnk" data-a="go" data-id="offres">← Offres</button></p><h1>Fil d’actualité</h1><p class="sub">Les derniers posts des entreprises que tu suis.</p>`
+ +(L.map(x=>`<div class="card" data-pid="${x.id}"><div style="display:flex;gap:10px;align-items:center;cursor:pointer" data-a="co" data-id="${x.owner}">${av(x.logo,x.company,40)}<div><b>${esc(x.company)}</b><br><span class="meta">${fd(x.created_at)}</span></div></div><div class="pbody" style="white-space:pre-wrap;margin-top:8px">${esc(x.body)}</div>${photosHtml(x.photos)}</div>`).join("")||'<div class="card meta">Rien pour le moment. Abonne-toi à des entreprises depuis leur page.</div>');window.scrollTo(0,0)}
+A.feed=openFeed;
+const feedBtn='<div class="card"><button data-a="feed">📰 Fil d’actualité</button></div>';
+const _tc=vTabC;vTabC=function(){_tc();const h=document.querySelector("#view h1");if(h&&role()==="candidat")h.insertAdjacentHTML("afterend",feedBtn)};
+const _vf=vOffres;vOffres=function(){_vf();const h=document.querySelector("#view h1");if(h&&role()==="candidat")h.insertAdjacentHTML("afterend",feedBtn)};
+}catch(e){console.error("Réactions :",e)}
+</script>
 </body>
 </html>
