@@ -674,5 +674,64 @@ A.phdel=async i=>{const j=S.mine.find(x=>x.id===S.ph);if(!j)return;const L=phs(j
  j.photos=L;const m=(u||"").split("/job-photos/")[1];if(m)SB.storage.from("job-photos").remove([m.split("?")[0]]);toast("Photo retirée");vRec()};
 }catch(e){console.error("Photos :",e)}
 </script>
+<script>
+/* Workly : pages entreprise, posts avec photos, abonnement. Bloc indépendant. */
+try{
+const CAP={gratuit:3,premium:3,starter:8,business:12,pro:20},capN=()=>CAP[(S.user&&S.user.plan)||"gratuit"]||3;
+let CO=null;
+const fdate=d=>new Date(d).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"});
+const usedN=()=>CO.posts.reduce((a,x)=>a+(x.photos||[]).length,0);
+async function shrink(f){const img=await new Promise((ok,ko)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=ko;i.src=URL.createObjectURL(f)});
+ const k=Math.min(1,1280/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+ return new Promise(r=>c.toBlob(r,"image/jpeg",.82))}
+
+async function openCo(id){S.co=id;$("#view").innerHTML='<p class="meta">Chargement…</p>';
+ const[pg,ps]=await Promise.all([SB.rpc("company_page",{p_id:id}),SB.from("company_posts").select("*").eq("owner",id).order("created_at",{ascending:false}).limit(30)]);
+ if(pg.error||!pg.data){toast("Page introuvable");go("offres");return}
+ CO={p:pg.data,posts:ps.data||[]};drawCo();window.scrollTo(0,0)}
+
+function drawCo(){const{p,posts}=CO,me=S.uid===p.id,cand=role()==="candidat",js=jobs().filter(j=>j.owner===p.id),used=usedN(),n=capN();
+ const editor=`<div class="card"><h2>Gérer ma page</h2><label>Présentation de l’entreprise</label><textarea id="coab" maxlength="1500">${esc(p.about||"")}</textarea><div class="btns"><button class="ghost" data-a="coabsave">Enregistrer la présentation</button></div>
+ <h2 style="margin-top:16px">Nouveau post</h2><p class="meta">Photos de la page : ${used}/${n} avec ton offre ${planName()}.</p><textarea id="cotx" maxlength="2000" placeholder="Événement, équipe, actualité…"></textarea>${used<n?'<label style="margin-top:8px">Photos</label><input type="file" id="copf" accept="image/*" multiple>':'<p class="meta warn">Limite de photos atteinte : passe à un palier supérieur pour en ajouter.</p>'}<div class="btns"><button data-a="copost">Publier le post</button></div></div>`;
+ const post=x=>`<div class="card"><div class="row"><span class="meta">${fdate(x.created_at)}</span><span>${me?`<button class="lnk" data-a="codel" data-id="${x.id}">Supprimer</button>`:(S.user?`<button class="lnk" data-a="corep" data-id="${x.id}">Signaler</button>`:"")}</span></div><div style="white-space:pre-wrap">${esc(x.body)}</div>${(x.photos||[]).length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${x.photos.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="" loading="lazy" style="width:160px;height:120px;object-fit:cover;border-radius:10px"></a>`).join("")}</div>`:""}</div>`;
+ $("#view").innerHTML=`<p><button class="lnk" data-a="go" data-id="offres">← Retour aux offres</button></p>
+ <div class="card"><div style="display:flex;gap:14px;align-items:center">${av(p.logo,p.company,72)}<div style="min-width:0"><h1 style="margin:0">${esc(p.company)}</h1><div class="chips">${p.verified?'<span class="chip v">✔ Entreprise vérifiée</span>':""}<span class="chip">${p.followers} abonné(s)</span></div></div></div>
+ ${p.about?`<p style="white-space:pre-wrap">${esc(p.about)}</p>`:'<p class="meta">Aucune présentation pour le moment.</p>'}
+ ${cand?`<div class="btns"><button class="${p.followed?"ghost":""}" data-a="cofol">${p.followed?"✔ Abonné : se désabonner":"🔔 S’abonner"}</button></div>`:""}
+ ${!S.user?'<div class="btns"><button data-a="go" data-id="connexion">Connecte-toi pour t’abonner</button></div>':""}</div>
+ ${me?editor:""}
+ <div class="card"><h2>Offres (${js.length})</h2>${js.map(j=>`<div class="tip row"><span><b>${esc(j.title)}</b> · ${esc(j.city)}, ${esc(j.country)}</span><button class="ghost" data-a="detail" data-id="${j.id}">Voir</button></div>`).join("")||'<span class="meta">Aucune offre active.</span>'}</div>
+ <h2>Actualités</h2>${posts.map(post).join("")||'<div class="card meta">Aucune actualité pour le moment.</div>'}`}
+
+/* Points d'entrée */
+const _list3=list;
+list=function(){_list3();const L=$("#list");if(!L)return;
+ L.querySelectorAll('[data-a="detail"]').forEach(b=>{const j=jobs().find(x=>x.id==b.dataset.id);if(j&&j.owner)b.insertAdjacentHTML("afterend",`<button class="ghost" data-a="co" data-id="${j.owner}">🏢 Page</button>`)})};
+const _vo3=vOffre;
+vOffre=function(){_vo3();const j=jobs().find(x=>x.id===S.cur)||S.mine.find(x=>x.id===S.cur),b=document.querySelector("#view .btns");
+ if(b&&j&&j.owner)b.insertAdjacentHTML("beforeend",`<button class="ghost" data-a="co" data-id="${j.owner}">🏢 Page de l’entreprise</button>`)};
+const _vr3=vRec;
+vRec=function(){_vr3();const h=document.querySelector("#view h1");if(h)h.insertAdjacentHTML("afterend",`<div class="card"><button data-a="co" data-id="${S.uid}">🏢 Ma page entreprise</button></div>`)};
+const _no=A.notifopen;
+A.notifopen=async id=>{const n=S.notifs.find(x=>x.id==id);
+ if(n&&(n.link||"").startsWith("entreprise:")){if(!n.read_at){n.read_at=new Date().toISOString();await SB.from("notifications").update({read_at:n.read_at}).eq("id",n.id)}openCo(n.link.slice(11));return}
+ return _no(id)};
+
+/* Actions */
+A.co=id=>openCo(id);
+A.cofol=async()=>{if(!S.user)return;const p=CO.p,r=p.followed?await SB.from("company_follows").delete().eq("company",p.id).eq("candidate",S.uid):await SB.from("company_follows").insert({company:p.id,candidate:S.uid});
+ if(r.error){toast(r.error.message);return}toast(p.followed?"Abonnement retiré":"Abonné : tu seras prévenu des nouveautés");openCo(p.id)};
+A.coabsave=async()=>{const t=$("#coab").value.trim().slice(0,1500),r=await SB.from("profiles").update({about:t}).eq("id",S.uid);if(r.error){toast(r.error.message);return}CO.p.about=t;toast("Présentation enregistrée");drawCo()};
+A.copost=async()=>{const t=$("#cotx").value.trim(),fs=[...(($("#copf")||{}).files||[])];if(!t&&!fs.length){toast("Écris un texte ou ajoute une photo");return}
+ const n=capN();if(usedN()+fs.length>n){toast("Limite : "+n+" photos pour ton offre");return}
+ const urls=[];for(const f of fs){if(!/^image\//.test(f.type))continue;
+  try{const b=await shrink(f),path=S.uid+"/post-"+Date.now()+"-"+urls.length+".jpg",up=await SB.storage.from("job-photos").upload(path,b,{contentType:"image/jpeg"});
+   if(up.error){toast("Envoi impossible : "+up.error.message);return}urls.push(SB.storage.from("job-photos").getPublicUrl(path).data.publicUrl)}catch(e){toast("Image illisible");return}}
+ const r=await SB.from("company_posts").insert({owner:S.uid,body:t,photos:urls});if(r.error){toast(r.error.message);return}toast("Post publié");openCo(S.uid)};
+A.codel=async id=>{if(!confirm("Supprimer ce post ?"))return;const x=CO.posts.find(p=>p.id==id),r=await SB.from("company_posts").delete().eq("id",+id);if(r.error){toast(r.error.message);return}
+ const ps=((x&&x.photos)||[]).map(u=>(u.split("/job-photos/")[1]||"").split("?")[0]).filter(Boolean);if(ps.length)SB.storage.from("job-photos").remove(ps);toast("Post supprimé");openCo(S.uid)};
+A.corep=async id=>{const r=await SB.from("post_reports").insert({post_id:+id});toast(r.error&&r.error.code!=="23505"?r.error.message:"Merci, post signalé")};
+}catch(e){console.error("Pages entreprise :",e)}
+</script>
 </body>
 </html>
