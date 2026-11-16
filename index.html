@@ -733,5 +733,13 @@ A.codel=async id=>{if(!confirm("Supprimer ce post ?"))return;const x=CO.posts.fi
 A.corep=async id=>{const r=await SB.from("post_reports").insert({post_id:+id});toast(r.error&&r.error.code!=="23505"?r.error.message:"Merci, post signalé")};
 }catch(e){console.error("Pages entreprise :",e)}
 </script>
+<script>
+try{
+A.coabsave=async()=>{
+ const t=$("#coab").value.trim().slice(0,1500),r=await SB.rpc("set_company_about",{p_text:t});
+ if(r.error){toast(r.error.message);return}
+ toast("Présentation enregistrée");A.co(S.uid)};
+}catch(e){console.error(e)}
+</script>
 </body>
 </html>
