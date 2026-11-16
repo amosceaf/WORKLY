@@ -799,5 +799,52 @@ const _tc=vTabC;vTabC=function(){_tc();const h=document.querySelector("#view h1"
 const _vf=vOffres;vOffres=function(){_vf();const h=document.querySelector("#view h1");if(h&&role()==="candidat")h.insertAdjacentHTML("afterend",feedBtn)};
 }catch(e){console.error("Réactions :",e)}
 </script>
+<script>
+/* Workly : correctifs et réglages. Bloc indépendant, à coller en DERNIER. */
+try{
+/* 1. Remet la fonction picker() d'origine (écrasée par le bloc des réactions) */
+picker=function(id,jobId,secId,cur){if(!secId)secId=id+"sec";PK[id]=[jobId,secId];const c=cur?norm(cur):"";
+ return `<div class="card" style="background:var(--bg)"><button type="button" class="ghost" data-a="pkt" data-id="${id}">Secteur d’activité : <b id="pkl-${id}">${esc(c||"choisir")}</b> ▾</button>${secId===id+"sec"?`<input type="hidden" id="${secId}" value="${esc(c)}">`:""}<div id="pks-${id}" class="chips" style="display:none;margin-top:10px">${FIELDS.map((f,i)=>`<button type="button" class="chip" style="cursor:pointer" data-a="pks" data-id="${id}|${i}">${esc(f)}</button>`).join("")}</div><div id="pkj-${id}" class="chips" style="margin-top:10px"></div></div>`};
+
+/* 2. Nouvelles couleurs + masque le pied de page global */
+const COL={violet:["Violet","#7C3AED","#EDE4FD","#A78BFA","#2B2150"],teal:["Turquoise","#0F766E","#D5F2EE","#2DD4BF","#13403B"],red:["Rouge","#DC2626","#FDE2E2","#F87171","#4A1D1D"],gold:["Or","#A16207","#FBF0CC","#FACC15","#463A12"],slate:["Ardoise","#475569","#E2E8F0","#94A3B8","#2A3447"],lime:["Citron vert","#4D7C0F","#E6F3CC","#A3E635","#2B3D10"]};
+let css=".wrap>p.meta{display:none}";
+for(const[k,v]of Object.entries(COL))css+=`:root[data-accent="${k}"]{--brand:${v[1]};--soft:${v[2]}}:root[data-accent="${k}"][data-theme="dark"]{--brand:${v[3]};--soft:${v[4]}}@media (prefers-color-scheme:dark){:root[data-accent="${k}"]:not([data-theme="light"]){--brand:${v[3]};--soft:${v[4]}}}`;
+document.head.insertAdjacentHTML("beforeend","<style>"+css+"</style>");
+const ACC=[["indigo","Indigo","#4F46E5"],["ocean","Océan","#0E7490"],["forest","Forêt","#15803D"],["sun","Soleil","#C2410C"],["rose","Rose","#BE185D"]].concat(Object.entries(COL).map(([k,v])=>[k,v[0],v[1]]));
+
+/* 3. Page Paramètres en liste, avec Apparence déroulante et mentions légales en bas */
+const row=(ic,tx,btn)=>`<div class="tip row" style="align-items:center"><span>${ic} ${tx}</span>${btn}</div>`,gb=(id,t)=>`<button class="ghost" data-a="go" data-id="${id}">${t}</button>`;
+vParam=function(){const t=load("theme","auto"),a=load("accent","indigo"),l=load("lang","fr"),u=S.user,op=S.apOpen?" open":"";
+ $("#view").innerHTML=`<h1>Paramètres</h1>
+ ${u?`<div class="card"><h2>Compte</h2>${row("👤","Mon profil, mes données et mes notifications",gb("compte","Ouvrir"))}${row("🔑","Mot de passe",'<button class="ghost" data-a="pwform">Modifier</button>')}<div id="pwbox"></div>${row("✉️","E-mail : "+esc(u.email||""),'<button class="ghost" data-a="mailchg">Modifier</button>')}${row("🔔","Notifications",gb("notifications","Voir"))}${row("💳","Offre actuelle : "+esc(planName()),gb("tarifs","Gérer"))}</div>`:""}
+ <div class="card"><details${op}><summary style="cursor:pointer;font-weight:700;font-size:18px">🎨 Apparence</summary>
+  <details${op} style="margin-top:12px"><summary style="cursor:pointer;font-weight:600">Thème</summary><div class="btns">${[["auto","Automatique"],["light","Clair"],["dark","Sombre"]].map(([k,n])=>`<button class="${t===k?"":"ghost"}" data-a="setpref" data-id="theme|${k}">${n}</button>`).join("")}</div></details>
+  <details${op} style="margin-top:12px"><summary style="cursor:pointer;font-weight:600">Couleur</summary><div class="btns">${ACC.map(([k,n,c])=>`<button class="${a===k?"":"ghost"}" style="border-left:14px solid ${c}" data-a="setpref" data-id="accent|${k}">${n}</button>`).join("")}</div></details></details></div>
+ <div class="card"><details><summary style="cursor:pointer;font-weight:700;font-size:18px">🌍 Langue</summary><div class="btns">${[["fr","Français"],["en","English (partiel)"]].map(([k,n])=>`<button class="${l===k?"":"ghost"}" data-a="setpref" data-id="lang|${k}">${n}</button>`).join("")}</div><p class="meta">L’anglais traduit pour l’instant les menus et boutons principaux, pas encore tous les textes.</p></details></div>
+ ${u?`<div class="card"><button class="ghost" data-a="logout">🚪 Se déconnecter</button> <button class="lnk" data-a="delreq">Demander la suppression de mon compte</button></div>`:""}
+ <div class="card"><h2>Informations légales et contact</h2>${row("🔒","Confidentialité",gb("confidentialite","Lire"))}${row("📄","Conditions d’utilisation",gb("conditions","Lire"))}${row("💳","Abonnement et remboursement",gb("remboursement","Lire"))}${row("✉️","Contact : "+esc(B.mail),`<a href="mailto:${esc(B.mail)}"><button class="ghost">Écrire</button></a>`)}</div>`};
+const _sp=A.setpref;A.setpref=v=>{S.apOpen=!v.startsWith("lang");_sp(v)};
+A.pwform=()=>{$("#pwbox").innerHTML='<div style="margin:8px 0"><input id="npw" type="password" placeholder="Nouveau mot de passe (8 caractères min.)"><div class="btns"><button data-a="pwsave">Enregistrer</button></div></div>'};
+A.pwsave=async()=>{const p=$("#npw").value;if(p.length<8){toast("8 caractères minimum");return}const r=await SB.auth.updateUser({password:p});if(r.error){toast(msgErr(r.error));return}toast("Mot de passe modifié");$("#pwbox").innerHTML=""};
+A.mailchg=async()=>{const m=(prompt("Nouvelle adresse e-mail :")||"").trim();if(!m)return;if(!/\S+@\S+\.\S+/.test(m)){toast("E-mail invalide");return}const r=await SB.auth.updateUser({email:m});if(r.error){toast(msgErr(r.error));return}toast("Un e-mail de confirmation vient d’être envoyé")};
+const _lg=vLegal;vLegal=function(k){_lg(k);const h=document.querySelector("#view h1");if(h)h.insertAdjacentHTML("beforebegin",'<p><button class="lnk" data-a="go" data-id="parametres">← Paramètres</button></p>')};
+
+/* 4. Une entreprise ne voit plus les boutons réservés aux candidats */
+const noCand=()=>{if(role()==="entreprise")document.querySelectorAll('#view [data-a="apply"],#view [data-a="save"],#view [data-a="adaptjob"]').forEach(b=>b.remove())};
+const _l4=list;list=function(){_l4();noCand()};
+const _o4=vOffre;vOffre=function(){_o4();noCand()};
+
+/* 5. Filtre Pays : tous les pays, pas seulement ceux qui ont déjà des offres */
+const _vf4=vOffres;vOffres=function(){_vf4();const s=$("#fc");if(!s)return;
+ s.innerHTML='<option value="">Tous</option>'+[...new Set(CTRY.concat(jobs().map(j=>j.country)))].sort((a,b)=>a.localeCompare(b,"fr")).map(c=>`<option>${esc(c)}</option>`).join("")};
+
+/* 6. Textes d'offres mis à jour : annonces standards illimitées */
+const _vt=vTarifs;vTarifs=function(){_vt();const M={"1 offre active":"Offres standards illimitées · 3 photos de page","5 offres actives":"Offres illimitées · 8 photos de page","11 offres actives":"Offres illimitées · 12 photos de page","Offres illimitées":"Offres illimitées · 20 photos de page"};
+ document.querySelectorAll("#view ul.f li").forEach(li=>{const t=li.textContent.trim();if(M[t])li.textContent=M[t]})};
+const _v5=vRec;vRec=function(){_v5();document.querySelectorAll("#view p.meta").forEach(p=>{if(/^Ton offre /.test(p.textContent)&&/publiée|quota/.test(p.textContent))p.textContent="Ton offre "+planName()+" : offres standards illimitées."})};
+const _te=vTabE;vTabE=function(){_te();document.querySelectorAll("#view .chip").forEach(c=>{if(/publiée\(s\) ce mois-ci/.test(c.textContent))c.textContent="Offres illimitées"})};
+}catch(e){console.error("Correctifs :",e)}
+</script>
 </body>
 </html>
