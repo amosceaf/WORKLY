@@ -36,6 +36,25 @@ button.ghost{background:var(--soft);color:var(--brand)}button.bad{background:var
 #modal .box{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;width:100%;max-width:640px}
 .warnbox{background:rgba(217,119,6,.12);border:1px solid var(--warn);border-radius:10px;padding:10px;font-size:13px;margin:8px 0}
 @media (max-width:860px){.shell{display:block}aside{width:auto;height:auto;position:static;flex-direction:row;overflow-x:auto;padding:8px;border-right:0;border-bottom:1px solid var(--line)}aside .logo,aside .sp{display:none}aside button.nav{padding:8px 11px}main{padding:14px 12px 60px}}
+:root[data-admin-theme="light"]{
+--bg:#F5F7FB;
+--surface:#FFFFFF;
+--text:#162033;
+--muted:#5D6B82;
+--line:#DDE3EE;
+--brand-t:#FFFFFF;
+color-scheme:light;
+}
+
+:root[data-admin-theme="dark"]{
+--bg:#0E1424;
+--surface:#172037;
+--text:#E8ECF6;
+--muted:#9AA7C0;
+--line:#2A3556;
+--brand-t:#FFFFFF;
+color-scheme:dark;
+}
 </style>
 </head>
 <body>
@@ -88,6 +107,7 @@ async function afterAuth(){
 const SECS=[["overview","Vue générale","📊"],["users","Utilisateurs","👥"],["companies","Entreprises","🏢"],["subs","Abonnements","🎫"],["pays","Paiements","💳"],["credits","Crédits","🪙"],["plans","Formules et tarifs","🏷️"],["quotas","Quotas","📏"],["audit","Journal d’activité","📜"],["reports","Signalements","🚩"]];
 function buildShell(){$("#side").innerHTML=`<div class="logo">Workly <span>Admin</span></div>`+SECS.map(s=>`<button class="nav" data-s="${s[0]}">${s[2]} ${s[1]}</button>`).join("")+`<div class="sp"></div><button class="nav" id="b2fa">🔐 Double authentification</button><a class="nav" style="padding:9px 12px;color:var(--muted);text-decoration:none;font-weight:600" href="${HOME}">↩ Retour à Workly</a><button class="nav" id="bout">⎋ Déconnexion</button>`;
  $("#side").querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>go(b.dataset.s));$("#b2fa").onclick=sec2fa;$("#bout").onclick=out}
+ applyAdminAppearance();
 async function loadConfig(){const[p,l,c]=await Promise.all([SB.from("plans").select("*").order("sort"),SB.from("plan_limits").select("*"),SB.from("credit_costs").select("*").order("kind")]);PLANS=p.data||[];LIMS=l.data||[];COSTS=c.data||[]}
 let CUR="";async function go(s){CUR=s;$("#side").querySelectorAll("[data-s]").forEach(b=>b.classList.toggle("on",b.dataset.s===s));$("#main").innerHTML='<p class="meta">Chargement…</p>';window.scrollTo(0,0);
  try{await loadConfig();await SEC[s]()}catch(e){$("#main").innerHTML=`<div class="card"><h2>Erreur</h2><p>${esc(nice(e))}</p></div>`}}
@@ -203,7 +223,87 @@ SEC.quotas=async()=>{const blk=aud=>{const ps=PLANS.filter(p=>p.audience===aud),
  page("Quotas","-1 signifie illimité. Les limites sont appliquées par le serveur. Chaque modification est inscrite au journal.",`${blk("entreprise")}${blk("candidat")}<div class="card"><h2>Coût en crédits quand le quota est atteint</h2>${tbl([["Action",r=>esc(CL[r.kind]||r.kind)],["Crédits",r=>`<input type="number" min="0" style="width:90px" value="${r.cost}" data-ck="${r.kind}">`]],COSTS)}</div>`);
  $("#main").querySelectorAll("[data-k]").forEach(i=>i.onchange=async()=>{const v=parseInt(i.value,10);if(isNaN(v)||v<-1){toast("Valeur invalide",1);return}try{await rpc("admin_set_limit",{aud:i.dataset.aud,pid:i.dataset.pid,k:i.dataset.k,v});toast("Quota enregistré")}catch(e){toast(nice(e),1)}});
  $("#main").querySelectorAll("[data-ck]").forEach(i=>i.onchange=async()=>{const v=parseInt(i.value,10);if(isNaN(v)||v<0){toast("Valeur invalide",1);return}try{await rpc("admin_set_credit_cost",{k:i.dataset.ck,c:v});toast("Coût enregistré")}catch(e){toast(nice(e),1)}})};
+/* ---------- Paramètres ---------- */
 
+SEC.settings=async()=>{
+
+page("Paramètres",
+"Personnalisation de l'interface Workly Admin.",
+`
+<div class="card">
+<h2>Apparence</h2>
+
+<label>Thème</label>
+<select id="adminTheme">
+<option value="light">Clair</option>
+<option value="dark">Sombre</option>
+</select>
+
+<label style="margin-top:12px">Couleur principale</label>
+
+<select id="adminColor">
+<option value="#4F46E5">Bleu violet</option>
+<option value="#2563EB">Bleu</option>
+<option value="#0891B2">Turquoise</option>
+<option value="#059669">Vert</option>
+<option value="#7C3AED">Violet</option>
+<option value="#DB2777">Rose</option>
+</select>
+
+<button id="saveAppearance" style="margin-top:14px">
+Enregistrer l'apparence
+</button>
+</div>
+
+<div class="card">
+<h2>Langue</h2>
+
+<label>Langue préférée</label>
+<select id="adminLanguage">
+<option value="fr">Français</option>
+<option value="en">English</option>
+<option value="es">Español</option>
+<option value="pt">Português</option>
+<option value="ar">العربية</option>
+</select>
+
+<p class="meta">
+La préférence linguistique est enregistrée. La traduction complète de l'interface nécessite l'intégration des fichiers de traduction.
+</p>
+
+<button id="saveLanguage">Enregistrer la langue</button>
+</div>
+`);
+
+$("#adminTheme").value=localStorage.getItem("wa_theme")||"light";
+$("#adminColor").value=localStorage.getItem("wa_color")||"#4F46E5";
+$("#adminLanguage").value=localStorage.getItem("wa_language")||"fr";
+
+$("#saveAppearance").onclick=()=>{
+const theme=$("#adminTheme").value;
+const color=$("#adminColor").value;
+
+localStorage.setItem("wa_theme",theme);
+localStorage.setItem("wa_color",color);
+
+applyAdminAppearance();
+toast("Apparence enregistrée");
+};
+
+$("#saveLanguage").onclick=()=>{
+localStorage.setItem("wa_language",$("#adminLanguage").value);
+toast("Préférence linguistique enregistrée");
+};
+};
+
+function applyAdminAppearance(){
+
+const theme=localStorage.getItem("wa_theme")||"light";
+const color=localStorage.getItem("wa_color")||"#4F46E5";
+
+document.documentElement.dataset.adminTheme=theme;
+document.documentElement.style.setProperty("--brand",color);
+}
 /* ---------- 9. Journal ---------- */
 SEC.audit=async()=>{const rows=await safe("admin_audit_list",{lim:300});if(!rows)return;
  page("Journal d’activité","Toutes les opérations administratives, avec date, heure et auteur.",`<div class="card"><div class="row"><div style="flex:1"><label>Filtrer (action, cible, détail)</label><input id="aq"></div></div><div id="al" style="margin-top:10px"></div></div>`);
