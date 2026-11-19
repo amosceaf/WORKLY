@@ -1450,3 +1450,66 @@ const _tc=vTabC;
 vTabC=function(){_tc();document.querySelector("#view h1")?.insertAdjacentHTML("afterend",'<div class="card"><button class="ghost" data-a="guide">📘 Guide : 10 conseils pour décrocher un job à distance</button></div>')};
 }catch(e){console.error("KPI/feedback :",e)}
 </script>
+<script>
+/* Workly : KPI, feedback de matching, ESCO, guide candidat. Bloc indépendant, à coller en DERNIER. */
+try{
+/* 1. Suivi des visites et de l'origine d'inscription (identifiant aléatoire, sans adresse IP) */
+try{const q=new URLSearchParams(location.search).get("utm_source");if(q)localStorage.setItem("wk3_src",q.slice(0,60))}catch(e){}
+const _la=loadAll;let visited=false;
+loadAll=async function(){await _la();
+ try{const src=localStorage.getItem("wk3_src")||"direct";
+  if(!visited&&!sessionStorage.getItem("wk3_visit")){visited=true;sessionStorage.setItem("wk3_visit","1");let v=localStorage.getItem("wk3_vid");if(!v){v=(crypto.randomUUID?crypto.randomUUID():String(Math.random()).slice(2)+Date.now());localStorage.setItem("wk3_vid",v)}SB.from("visit_log").insert({visitor:v,source:src}).then(()=>{})}
+  if(S.user&&!S.user.signup_source){SB.rpc("set_signup_source",{p_src:src}).then(()=>{S.user.signup_source=src})}}catch(e){}};
+
+/* 2. Page KPI (administrateurs) */
+const _vp=vParam;
+vParam=function(){_vp();if(!S.isAdmin)return;document.querySelector("#view h1")?.insertAdjacentHTML("afterend",'<div class="card"><button data-a="kpi">📊 Indicateurs hebdomadaires (KPI)</button></div>')};
+A.kpi=async function(){
+ $("#view").innerHTML='<p class="meta">Chargement des indicateurs…</p>';
+ const r=await SB.rpc("admin_kpis",{p_weeks:8});
+ if(r.error||!r.data){$("#view").innerHTML=`<div class="card"><h2>Indicateurs indisponibles</h2><p class="meta">${esc(r.error?r.error.message:"Aucune donnée")}. Vérifie que le script SQL des KPI a été exécuté et que ton compte est administrateur.</p></div>`;return}
+ const W=r.data.weeks||[],C=r.data.channels||[],pc=(a,b)=>b>0?Math.round(a/b*100)+" %":"—";
+ $("#view").innerHTML=`<p><button class="lnk" data-a="go" data-id="parametres">← Paramètres</button></p><h1>Indicateurs hebdomadaires</h1><p class="sub">Données de la plateforme, semaines du lundi au dimanche. « Compte actif » : compte créé dans la semaine avec au moins une candidature ou une offre.</p>
+ <div class="card" style="overflow:auto"><table><thead><tr><th>Semaine</th><th>Inscriptions</th><th>Visiteurs</th><th>Visiteurs → comptes</th><th>Comptes actifs</th><th>Offres</th><th>Postes pourvus</th><th>Retours matching (moy. /5)</th><th>Dépenses (FCFA)</th></tr></thead><tbody>${W.map(w=>`<tr><td>${esc(w.week)}</td><td>${w.signups}</td><td>${w.visitors}</td><td>${pc(w.signups,w.visitors)}</td><td>${w.active_accounts}</td><td>${w.jobs_published}</td><td>${w.jobs_filled} (${pc(w.jobs_filled,w.jobs_published)})</td><td>${w.feedback_avg??"—"}</td><td>${Math.round(w.spend).toLocaleString("fr-FR")}</td></tr>`).join("")}</tbody></table></div>
+ <div class="card" style="overflow:auto"><h2>Coût d’acquisition par canal (8 semaines)</h2><table><thead><tr><th>Canal</th><th>Inscriptions</th><th>Dépenses (FCFA)</th><th>Coût par inscription</th></tr></thead><tbody>${C.map(c=>`<tr><td>${esc(c.channel)}</td><td>${c.signups}</td><td>${Math.round(c.spend).toLocaleString("fr-FR")}</td><td>${c.cac==null?"—":Math.round(c.cac).toLocaleString("fr-FR")}</td></tr>`).join("")||'<tr><td colspan="4" class="meta">Aucune donnée.</td></tr>'}</tbody></table>
+ <h3 style="margin-top:14px">Saisir une dépense</h3><div class="grid"><div><label>Canal (comme dans utm_source)</label><input id="kc" placeholder="facebook"></div><div><label>Semaine (une date de la semaine)</label><input id="kw" type="date"></div><div><label>Montant (FCFA)</label><input id="ka" type="number" min="0"></div></div><div class="btns"><button data-a="kpicost">Enregistrer la dépense</button></div></div>`};
+A.kpicost=async()=>{const c=($("#kc").value||"").trim().toLowerCase(),w=$("#kw").value,a=+$("#ka").value;if(!c||!w||!(a>=0)){toast("Renseigne le canal, la semaine et le montant");return}
+ const r=await SB.rpc("admin_set_cost",{p_channel:c,p_week:w,p_amount:a});if(r.error){toast(r.error.message);return}toast("Dépense enregistrée");A.kpi()};
+
+/* 3. Feedback de matching, de 1 à 5 */
+const askFb=key=>{document.querySelectorAll(".fbp").forEach(x=>x.remove());
+ document.body.insertAdjacentHTML("beforeend",`<div class="card fbp" style="position:fixed;left:50%;transform:translateX(-50%);bottom:84px;z-index:200;max-width:92vw;box-shadow:0 8px 30px rgba(0,0,0,.25)"><b>Cette offre correspond-elle à ton profil ?</b><div class="btns">${[1,2,3,4,5].map(n=>`<button class="ghost" data-a="fbgo" data-id="${key}|${n}">${n} ★</button>`).join("")}<button class="lnk" data-a="fbx">Plus tard</button></div><span class="meta">1 = pas du tout · 5 = parfaitement</span></div>`)};
+const _ap=A.apply;
+A.apply=async function(id){const had=!!S.applied[id];await _ap(id);if(!had&&S.applied[id])askFb("job:"+id)};
+A.fbx=()=>document.querySelectorAll(".fbp").forEach(x=>x.remove());
+A.fbgo=async v=>{const[k,n]=v.split("|"),[t,id]=k.split(":");
+ const r=await SB.rpc("submit_match_feedback",{p_application:t==="app"?+id:null,p_job:t==="job"?+id:null,p_score:+n});
+ A.fbx();if(r.error){toast("Évaluation impossible : "+r.error.message);return}toast("Merci pour ton évaluation")};
+const _rc=vRecus;
+vRecus=function(){_rc();if(role()!=="entreprise")return;
+ document.querySelectorAll('#view [data-a="setst"]').forEach(b=>{const card=b.closest(".card");if(!card||card.querySelector(".fbr"))return;const id=b.dataset.id.split("|")[0];
+  card.insertAdjacentHTML("beforeend",`<div class="fbr meta" style="margin-top:8px">Pertinence de ce profil pour l’offre : ${[1,2,3,4,5].map(n=>`<button class="lnk" data-a="fbgo" data-id="app:${id}|${n}">${n} ★</button>`).join("")}</div>`)})};
+
+/* 4. Compétences normalisées avec le référentiel européen ESCO */
+const escoBox=t=>`<div class="card" style="background:var(--bg);margin-top:8px"><label>🔎 Compétences reconnues (référentiel européen ESCO)</label><input data-esco="${t}" placeholder="Tape une compétence, ex. gestion de projet"><div class="chips" data-escores="${t}"></div></div>`;
+const _vc=vCompte;
+vCompte=function(){_vc();if(role()!=="candidat")return;const f=document.querySelector("#skills");if(f&&!document.querySelector('[data-esco="skills"]'))f.parentElement.insertAdjacentHTML("beforeend",escoBox("skills"))};
+const _vr=vRec;
+vRec=function(){_vr();if(role()!=="entreprise")return;const f=document.querySelector("#eg");if(f&&!document.querySelector('[data-esco="eg"]'))f.parentElement.insertAdjacentHTML("beforeend",escoBox("eg"))};
+let escoT=null;
+document.addEventListener("input",e=>{const t=e.target.dataset&&e.target.dataset.esco;if(!t)return;clearTimeout(escoT);const q=e.target.value.trim(),box=document.querySelector(`[data-escores="${t}"]`);
+ if(q.length<3){box.innerHTML="";return}
+ escoT=setTimeout(async()=>{try{const lg=["fr","en","es","pt","de","it","nl","pl","ro"].includes(load("lang","fr"))?load("lang","fr"):"fr";
+  const r=await fetch("https://ec.europa.eu/esco/api/search?language="+lg+"&type=skill&limit=8&text="+encodeURIComponent(q));if(!r.ok)throw 0;
+  const L=((await r.json())._embedded||{}).results||[];
+  box.innerHTML=L.map(x=>x.title||"").filter(Boolean).map(s=>`<button type="button" class="chip" style="cursor:pointer" data-a="escoadd" data-id="${t}|${esc(s)}">+ ${esc(s)}</button>`).join("")||'<span class="meta">Aucun résultat.</span>'}
+  catch(err){box.innerHTML='<span class="meta">Référentiel ESCO indisponible depuis ce navigateur.</span>'}},350)});
+A.escoadd=v=>{const i=v.indexOf("|"),t=v.slice(0,i),s=v.slice(i+1),inp=document.getElementById(t);if(!inp)return;const a=inp.value.split(",").map(x=>x.trim()).filter(Boolean);if(!a.some(x=>x.toLowerCase()===s.toLowerCase()))a.push(s);inp.value=a.join(", ")};
+
+/* 5. Guide candidat */
+const TIPS10=["Prépare un CV d’une page avec des résultats chiffrés.","Précise ton fuseau horaire et tes plages de disponibilité.","Montre que tu sais travailler en autonomie : exemples concrets à l’appui.","Soigne ton profil : photo, titre clair, compétences à jour.","Écris un message court et personnalisé pour chaque candidature.","Teste ta connexion, ton micro et ta caméra avant chaque entretien.","Maîtrise les outils collaboratifs : messagerie, visio, partage de documents.","Communique par écrit de façon claire : c’est ta première preuve.","Prépare trois exemples de réussites à raconter en entretien.","Relance poliment après 7 à 10 jours sans réponse."];
+A.guide=()=>{$("#view").innerHTML=`<p><button class="lnk" data-a="go" data-id="tableau">← Tableau de bord</button></p><h1>10 conseils pour décrocher un job à distance</h1><div class="card"><ol>${TIPS10.map(t=>`<li style="margin:8px 0">${t}</li>`).join("")}</ol><div class="btns"><button data-a="go" data-id="compte">Compléter mon profil</button><button class="ghost" data-a="go" data-id="evolia">M’entraîner avec Evolia</button></div></div>`};
+const _tc=vTabC;
+vTabC=function(){_tc();document.querySelector("#view h1")?.insertAdjacentHTML("afterend",'<div class="card"><button class="ghost" data-a="guide">📘 Guide : 10 conseils pour décrocher un job à distance</button></div>')};
+}catch(e){console.error("KPI/feedback :",e)}
+</script>
