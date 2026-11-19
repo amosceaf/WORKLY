@@ -1109,6 +1109,75 @@ try {
 @media(max-width:650px){.wkcv{padding:0 15px 18px}.wkcv header{margin:0 -15px 16px;padding:18px 15px}.wkcv header h1{font-size:23px}.wkcv.compact{padding:0 12px 14px}.wkcv.compact header{margin:0 -12px 12px;padding:15px 12px}}
 @media print{body{background:#fff!important}.wkcv{box-shadow:none;border:0}}
 </style>
+/* WORKLY — correctifs. À coller dans un <script> tout à la FIN du fichier principal (juste avant </body>).
+   Sans modifier le reste du code. Chaque bloc est indépendant (try/catch). */
+
+/* 1. ACCÈS ADMIN : nouvelle vérification, bouton visible dans l'en-tête, route #admin sans plantage */
+try{
+  const checkAdmin=async()=>{
+    if(!S.uid||!SB){S.isAdmin=false;return}
+    try{
+      const r=await SB.rpc("is_admin");
+      S.isAdminErr=r.error?r.error.message:null;
+      S.isAdmin=r.data===true;
+      if(r.error)console.warn("WORKLY admin : is_admin a échoué ->",r.error.message);
+      else if(!S.isAdmin)console.info("WORKLY admin : is_admin renvoie",r.data,"(ce compte n'est pas reconnu comme admin côté base)");
+    }catch(e){S.isAdmin=false;S.isAdminErr=e.message;console.warn("WORKLY admin :",e)}
+  };
+
+  const paintAdmin=()=>{
+    const bell=document.getElementById("bell");if(!bell)return;
+    bell.querySelector("[data-wk-admin]")?.remove();
+    if(S.isAdmin)bell.insertAdjacentHTML("afterbegin",'<a data-wk-admin href="admin.html" style="text-decoration:none"><button class="ghost" type="button">🛡️ Admin</button></a> ');
+  };
+
+  const _draw=drawNav;
+  drawNav=function(r){
+    _draw(r);paintAdmin();
+    const nav=document.getElementById("nav");if(!nav)return;
+    const groups=nav.querySelectorAll(".wk-nav-links");
+    const add=(id,label)=>{
+      if(nav.querySelector('a[href="#'+id+'"]')||!groups[1])return;
+      groups[1].insertAdjacentHTML("beforeend",'<a href="#'+id+'" class="'+(r===id?"on":"")+'">'+label+'</a>');
+    };
+    /* entrées de menu perdues par la dernière redéfinition de drawNav */
+    if(typeof role==="function"&&S.user){
+      if(role()==="candidat"){
+        if(typeof vCVStudio==="function")add("cvstudio","CV Studio");
+        if(typeof vCareer==="function")add("parcours","Mon parcours");
+      }else if(role()==="entreprise"&&typeof vCompare==="function")add("comparateur","Comparer les candidats");
+    }
+    /* "Publications" pointait vers une page inexistante */
+    nav.querySelectorAll('a[href="#publications"]').forEach(a=>{a.setAttribute("href","#feed");a.textContent="Publier une actualité"});
+  };
+
+  const _load=loadAll;
+  loadAll=async function(){
+    await _load();
+    if(S.uid&&!S.isAdmin)await checkAdmin();   /* 2e tentative si la 1re a échoué */
+    paintAdmin();
+  };
+
+  const _route=route;
+  route=function(){
+    if((location.hash||"").slice(1)==="admin"){location.replace("admin.html");return S.user?NAV()[0][0]:"accueil"}
+    return _route();
+  };
+}catch(e){console.error("Correctif admin :",e)}
+
+/* 2. CV : deux boutons "cvsave" se marchaient dessus (Evolia et CV Studio) */
+try{
+  const studioSave=A.cvsave;
+  A.cvsave=async function(...a){
+    const evo=document.getElementById("cvout");
+    if(evo){
+      const t=evo.value,{error}=await SB.from("profiles").update({cv:t}).eq("id",S.uid);
+      if(error){toast(error.message);return}
+      S.user.cv=t;toast("CV enregistré dans ton profil");return;
+    }
+    return studioSave&&studioSave.apply(this,a);
+  };
+}catch(e){console.error("Correctif CV :",e)}
 </body> </html>&#x20;
 
 <style id="wk-v10-layout-voice">
