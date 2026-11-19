@@ -1311,3 +1311,34 @@ window.WORKLY_V16_DIAGNOSTIC={version:'V16',checks:()=>({supabase:!!SB,session:!
 })();
 
 </script>
+<script>
+/* Workly : correctifs (inscription entreprise + rubrique Publications). Bloc indépendant, à coller en DERNIER. */
+try{
+/* 1. Inscription entreprise : l'e-mail était vérifié avec une expression erronée (double barre oblique inverse),
+      ce qui rejetait toutes les adresses. Même fonction, expression corrigée. */
+A.e1=async function(){
+ const m=g("mail").toLowerCase(),c=g("comp"),sector=g("sector"),workforce=g("workforce"),country=g("co_country"),city=g("co_city"),phone=g("co_phone"),rawSite=g("site");
+ if(!c||!sector||!workforce||!country||!city||!phone||!m){toast("Complète tous les champs obligatoires de l’entreprise");return}
+ if(!/^\S+@\S+\.\S+$/.test(m)){toast("Adresse e-mail professionnelle invalide");return}
+ if($("#pw").value.length<8){toast("Mot de passe : 8 caractères minimum");return}
+ if(!$("#cons").checked){toast("Accepte le consentement pour continuer");return}
+ let site="";
+ if(rawSite){try{const u=new URL(/^https?:\/\//i.test(rawSite)?rawSite:"https://"+rawSite);site=u.hostname.replace(/^www\./i,"")}catch(e){toast("Adresse du site web invalide");return}}
+ const meta={role:"entreprise",nom:c,company:c,site,sector,workforce,country,city,phone};
+ const{data,error}=await SB.auth.signUp({email:m,password:$("#pw").value,options:{emailRedirectTo:location.origin+location.pathname,data:meta}});
+ if(error){toast(msgErr(error));return}
+ W=null;
+ if(!data.session){toast("Compte créé : confirme ton e-mail puis connecte-toi");go("connexion");return}
+ await loadAll();
+ if(S.user)Object.assign(S.user,{sector,workforce,country,city,phone,site});
+ toast("Compte entreprise créé");go("tableau")};
+
+/* 2. Menu entreprise « Publications » : cette rubrique n'avait pas de page associée (le clic ramenait au tableau de bord).
+      Elle ouvre maintenant la page de l'entreprise, où se trouvent le formulaire et les publications. */
+document.addEventListener("click",e=>{
+ const a=e.target.closest('#nav a[href="#publications"]');if(!a)return;
+ e.preventDefault();e.stopPropagation();
+ if(S.user&&S.user.role==="entreprise")A.co(S.uid);else go("feed");
+ const n=document.querySelector("#nav");if(n)n.classList.remove("wk-nav-open")},true);
+}catch(e){console.error("Correctifs NEXUS :",e)}
+</script>
