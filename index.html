@@ -1226,3 +1226,55 @@ try {
 <script id="workly-v11-privacy-legal">
 (function(){try{const _legal=vLegal;vLegal=function(k){_legal(k);if(k!=='c')return;const c=document.createElement('section');c.className='card wk-ad-privacy';c.innerHTML=`<h2>Données relatives à la publicité et aux contenus sponsorisés</h2><p>WORKLY explique ici les règles applicables aux données utilisées pour mesurer ou personnaliser les publicités, les offres mises en avant et les contenus sponsorisés. Cette rubrique concerne les données de compte et d’utilisation de la plateforme, dans la limite des finalités annoncées et des choix exprimés par le membre.</p><h3>Catégories de données</h3><p>Les données potentiellement concernées comprennent le pays, la ville, la langue, les préférences professionnelles, les secteurs recherchés, les offres consultées, les interactions avec les contenus et les informations de profil nécessaires au fonctionnement du service. Les mots de passe, les données de paiement complètes et le contenu des messages privés ne doivent pas servir au ciblage publicitaire.</p><h3>Utilisation et mesure</h3><p>Les données peuvent permettre de mesurer la portée d’une campagne, de limiter l’affichage répétitif d’une même annonce, de produire des statistiques agrégées et, si une fonctionnalité de personnalisation est activée avec une base légale appropriée, de proposer des contenus correspondant aux intérêts professionnels déclarés.</p><h3>Partage avec les annonceurs</h3><p>Les annonceurs ne doivent recevoir que les informations nécessaires à la gestion de leurs campagnes et des statistiques agrégées. WORKLY ne vend pas les données personnelles des membres. Un annonceur ne peut pas consulter les messages privés ou les CV qui ne lui ont pas été transmis dans le cadre d’une candidature.</p><h3>Contrôle et droits des membres</h3><p>Tu peux demander l’accès à tes données, leur rectification ou leur suppression et gérer les autorisations facultatives proposées dans ton compte. Le refus de la personnalisation publicitaire ne doit pas empêcher l’accès aux fonctions essentielles de recherche d’emploi et de recrutement.</p><h3>Transparence des annonces</h3><p>Les contenus sponsorisés et les offres mises en avant doivent être clairement identifiés. Les prestataires publicitaires, les durées de conservation et les éventuels transferts de données seront précisés ici avant l’activation d’un service publicitaire externe.</p><p class="meta">Version de la rubrique : WORKLY 11.0 · Novembre 2026. Cette politique décrit les engagements de conception ; elle ne prétend pas qu’un réseau publicitaire externe est déjà connecté.</p>`;$('#view').appendChild(c)}}catch(e){console.error('WORKLY privacy',e)}})();
 </script>
+<script>
+/* Workly : architecture (journal d'erreurs, recherche serveur, profil enrichi). Bloc indépendant, à coller en DERNIER. */
+try{
+/* A. Journal d'erreurs du navigateur (5 par page au maximum, sans adresse IP) */
+let ERRN=0;
+const logErr=(m,s)=>{if(ERRN++>=5||!SB)return;try{SB.from("client_errors").insert({message:String(m||"").slice(0,300),source:String(s||"").slice(0,200),url:(location.hash||"").slice(0,80),ua:navigator.userAgent.slice(0,150)}).then(()=>{})}catch(e){}};
+window.addEventListener("error",e=>logErr(e.message,(e.filename||"")+":"+e.lineno));
+window.addEventListener("unhandledrejection",e=>logErr(e.reason&&e.reason.message||e.reason,"promise"));
+const _vp9=vParam;
+vParam=function(){_vp9();if(!S.isAdmin)return;document.querySelector("#view h1")?.insertAdjacentHTML("afterend",'<div class="card"><button class="ghost" data-a="errs">🛠️ Journal des erreurs</button></div>')};
+A.errs=async()=>{$("#view").innerHTML='<p class="meta">Chargement…</p>';
+ const r=await SB.rpc("admin_client_errors",{p_limit:100});
+ if(r.error){$("#view").innerHTML=`<div class="card"><h2>Journal indisponible</h2><p class="meta">${esc(r.error.message)}</p></div>`;return}
+ const L=r.data||[];
+ $("#view").innerHTML=`<p><button class="lnk" data-a="go" data-id="parametres">← Paramètres</button></p><h1>Journal des erreurs</h1><p class="sub">Les 100 dernières erreurs JavaScript remontées par les navigateurs.</p><div class="card" style="overflow:auto"><table><thead><tr><th>Date</th><th>Erreur</th><th>Source</th><th>Page</th></tr></thead><tbody>${L.map(x=>`<tr><td>${new Date(x.created_at).toLocaleString("fr-FR")}</td><td>${esc(x.message)}</td><td>${esc(x.source)}</td><td>${esc(x.url)}</td></tr>`).join("")||'<tr><td colspan="4" class="meta">Aucune erreur enregistrée.</td></tr>'}</tbody></table></div>`};
+
+/* B. Recherche plein texte côté serveur (titre, entreprise, description, compétences, ville) */
+const _lsrv=list;let SRVQ="",SRVSET=null,SRVT=null;
+function applySrv(){const L=$("#list");if(!L||!SRVSET)return;
+ [...L.children].forEach(el=>{const b=el.querySelector('[data-a="detail"]');if(b)el.style.display=SRVSET.has(String(b.dataset.id))?"":"none"})}
+list=function(){const fq=$("#fq"),q=fq?fq.value.trim():"";
+ if(!fq||q.length<3){SRVQ="";SRVSET=null;return _lsrv()}
+ fq.value="";_lsrv();fq.value=q;applySrv();
+ if(q!==SRVQ){SRVQ=q;SRVSET=null;clearTimeout(SRVT);
+  SRVT=setTimeout(async()=>{const r=await SB.rpc("search_jobs",{p_q:q});if(SRVQ!==q)return;
+   if(r.error||!r.data){_lsrv();return}
+   SRVSET=new Set(r.data.map(x=>String(x.id)));applySrv()},300)}};
+
+/* C. Profil enrichi : compétences + niveau, prétentions salariales, premières offres compatibles */
+let ONB=null;const LVN=["Débutant","Intermédiaire","Confirmé","Expert"];
+const keep=()=>{ONB.sal=($("#onbsal")||{}).value||"";ONB.cur=($("#onbcur")||{}).value||"FCFA"};
+const _tc9=vTabC;
+vTabC=function(){_tc9();if(role()==="candidat"&&S.user&&!S.user.onboarded)document.querySelector("#view h1")?.insertAdjacentHTML("afterend",'<div class="card"><h2>🎯 Complète ton profil enrichi</h2><p class="meta">Compétences, niveau et prétentions salariales : 2 minutes pour de meilleures offres.</p><button data-a="onb">Commencer</button></div>')};
+function vOnb(){const o=ONB;
+ $("#view").innerHTML=`<p><button class="lnk" data-a="go" data-id="tableau">← Tableau de bord</button></p><h1>Profil enrichi</h1><p class="sub">Tes compétences et leur niveau, tes attentes, puis tes premières offres compatibles.</p>
+ <div class="card"><h2>1. Compétences et niveau</h2><div class="grid"><input id="onbs" maxlength="60" placeholder="Ajoute une compétence (ex. Excel)"><button data-a="onbadd">Ajouter</button></div><div class="chips">${o.skills.map((s,i)=>`<span class="chip">${esc(s.n)} · <button class="lnk" data-a="onblvl" data-id="${i}">${LVN[s.l]}</button> <button class="lnk" data-a="onbrm" data-id="${i}">✕</button></span>`).join("")||'<span class="meta">Aucune compétence ajoutée.</span>'}</div><p class="meta">Clique sur le niveau d’une compétence pour le changer.</p></div>
+ <div class="card"><h2>2. Prétentions salariales (facultatif)</h2><div class="grid"><div><label>Montant mensuel minimum souhaité</label><input id="onbsal" type="number" min="0" value="${esc(o.sal)}"></div><div><label>Devise</label><select id="onbcur">${["FCFA","EUR","USD"].map(c=>`<option ${o.cur===c?"selected":""}>${c}</option>`).join("")}</select></div></div></div>
+ <div class="btns"><button data-a="onbsave">Enregistrer et voir mes offres</button></div><div id="onbres"></div>`}
+A.onb=()=>{const u=S.user;ONB={skills:sk(u).slice(0,15).map(n=>({n,l:Math.min(3,u.niveau||0)})),sal:u.salary_min||"",cur:u.salary_currency||"FCFA"};vOnb()};
+A.onbadd=()=>{const i=$("#onbs"),n=((i&&i.value)||"").trim();keep();if(n&&!ONB.skills.some(s=>s.n.toLowerCase()===n.toLowerCase())&&ONB.skills.length<30)ONB.skills.push({n,l:0});vOnb()};
+A.onblvl=i=>{keep();const s=ONB.skills[+i];if(s)s.l=(s.l+1)%4;vOnb()};
+A.onbrm=i=>{keep();ONB.skills.splice(+i,1);vOnb()};
+A.onbsave=async()=>{keep();if(!ONB.skills.length){toast("Ajoute au moins une compétence");return}
+ const lv={};ONB.skills.forEach(s=>lv[s.n]=s.l);const csv=ONB.skills.map(s=>s.n).join(", "),sal=+ONB.sal>0?+ONB.sal:null;
+ const r=await SB.rpc("save_onboarding",{p_skills:csv,p_levels:lv,p_salary:sal,p_currency:ONB.cur});
+ if(r.error){toast("Enregistrement impossible : "+r.error.message);return}
+ Object.assign(S.user,{skills:csv,skill_levels:lv,salary_min:sal,salary_currency:ONB.cur,onboarded:true});
+ const top=jobs().map(j=>({j,m:match(S.user,j)})).filter(x=>x.m!==null).sort((a,b)=>b.m-a.m).slice(0,5);
+ $("#onbres").innerHTML=`<div class="card"><h2>🎯 Tes premières offres compatibles</h2>${top.map(x=>`<div class="tip row"><span><b>${esc(x.j.title)}</b> · ${esc(x.j.company)} <span class="match">${x.m}%</span></span><button class="ghost" data-a="detail" data-id="${x.j.id}">Voir</button></div>`).join("")||'<p class="meta">Aucune offre pour le moment.</p>'}</div>`;
+ toast("Profil enrichi enregistré")};
+}catch(e){console.error("Architecture :",e)}
+</script>
