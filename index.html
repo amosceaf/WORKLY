@@ -1342,3 +1342,48 @@ document.addEventListener("click",e=>{
  const n=document.querySelector("#nav");if(n)n.classList.remove("wk-nav-open")},true);
 }catch(e){console.error("Correctifs NEXUS :",e)}
 </script>
+<script>
+/* Workly : suite NEXUS (onboarding recruteur, mots-clés, préférences de notification serveur). Bloc indépendant, à coller en DERNIER. */
+try{
+/* A. Démarrage guidé recruteur : progression calculée sur les données réelles */
+const _te2=vTabE;
+vTabE=function(){_te2();if(role()!=="entreprise"||!S.user)return;const u=S.user;
+ const st=[
+  [!!(u.sector&&u.country&&u.city&&u.phone),"Compléter les informations de l’entreprise","compte","Secteur, pays, ville et téléphone."],
+  [!!u.verified,"Faire vérifier l’entreprise","compte","Nécessaire avant de publier une offre."],
+  [S.mine.length>0,"Publier une première offre","recruter","Utilise un modèle d’offre et les mots-clés suggérés."],
+  [!!(u.about&&u.about.length>30),"Présenter l’entreprise sur sa page","publications","Décris ta mission et tes activités."],
+  [S.recv.length>0,"Recevoir et traiter une candidature","recus","Présélectionne ou programme un entretien."]];
+ const done=st.filter(x=>x[0]).length;if(done===st.length)return;const nx=st.find(x=>!x[0]);
+ const card=`<section class="card"><div class="row"><div><h2>Démarrage guidé : étape ${done+1} sur ${st.length}</h2><p class="meta">${nx[3]}</p></div><b style="font-size:22px;color:var(--brand)">${Math.round(done/st.length*100)}%</b></div><div class="bar"><i style="width:${done/st.length*100}%"></i></div>${st.map(x=>`<div class="tip ${x[0]?"ok":""}">${x[0]?"✔":"○"} ${x[1]}</div>`).join("")}<div class="btns"><button data-a="onbgo" data-id="${nx[2]}">${nx[1]}</button></div></section>`;
+ const h=document.querySelector("#view .wk-dashboard-heading");if(h)h.insertAdjacentHTML("afterend",card);else document.querySelector("#view").insertAdjacentHTML("afterbegin",card)};
+A.onbgo=id=>{if(id==="publications")A.co(S.uid);else go(id)};
+
+/* B. Suggestions de mots-clés dans le formulaire d'offre */
+const _vr6=vRec;
+vRec=function(){_vr6();if(role()!=="entreprise")return;const f=document.querySelector("#eg");if(!f||document.querySelector("#kwbox"))return;
+ f.parentElement.insertAdjacentHTML("beforeend",'<div id="kwbox" class="chips"></div><button type="button" class="lnk" data-a="kwsuggest">💡 Suggérer des mots-clés</button>')};
+A.kwsuggest=()=>{const f=norm(($("#ed")||{}).value||"")||"Autre",L=(SKB[f]||SKB["Autre"]).split("|"),box=$("#kwbox");if(!box)return;
+ if(!($("#ed")||{}).value)toast("Choisis d’abord un secteur pour des suggestions plus précises");
+ box.innerHTML=L.map(k=>`<button type="button" class="chip" style="cursor:pointer" data-a="kwadd" data-id="${esc(k)}">+ ${esc(k)}</button>`).join("")};
+A.kwadd=k=>{const i=$("#eg");if(!i)return;const a=i.value.split(",").map(x=>x.trim()).filter(Boolean);if(!a.some(x=>x.toLowerCase()===k.toLowerCase()))a.push(k);i.value=a.join(", ")};
+
+/* C. Préférences de notification enregistrées sur le serveur et appliquées dans WORKLY */
+const MAP={job:["job","company_post"],status:["status","application"],message:["message"]};
+let NP=null,NPU=null;
+const _ln=loadNotifs;
+loadNotifs=async function(){await _ln();
+ if(S.uid&&(!NP||NPU!==S.uid)){const r=await SB.from("notification_prefs").select("*").eq("user_id",S.uid).maybeSingle();NP=r.data||{events:["job","status","message"],frequency:"instant",channels:["inapp"]};NPU=S.uid}
+ if(NP){const hide=Object.keys(MAP).filter(k=>!NP.events.includes(k)).flatMap(k=>MAP[k]);S.notifs=S.notifs.filter(n=>!hide.includes(n.type))}};
+A.w16notifsave=async()=>{
+ const events=[...document.querySelectorAll("[data-w16-event]:checked")].map(x=>x.dataset.w16Event),channels=[...document.querySelectorAll("[data-w16-channel]:checked")].map(x=>x.dataset.w16Channel),frequency=($("#w16freq")||{}).value||"instant";
+ const r=await SB.from("notification_prefs").upsert({user_id:S.uid,events,channels,frequency,updated_at:new Date().toISOString()});
+ if(r.error){toast("Enregistrement impossible : "+r.error.message);return}
+ NP={events,channels,frequency};NPU=S.uid;await loadNotifs();drawNav();toast("Préférences enregistrées : les types décochés ne s’affichent plus dans WORKLY.")};
+const _vc7=vCompte;
+vCompte=function(){_vc7();if(!NP)return;
+ document.querySelectorAll("[data-w16-event]").forEach(c=>c.checked=NP.events.includes(c.dataset.w16Event));
+ document.querySelectorAll("[data-w16-channel]").forEach(c=>c.checked=NP.channels.includes(c.dataset.w16Channel));
+ const f=$("#w16freq");if(f)f.value=NP.frequency};
+}catch(e){console.error("Suite NEXUS :",e)}
+</script>
