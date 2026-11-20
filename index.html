@@ -1482,5 +1482,174 @@ try {
  const oldRender=window.render;if(typeof oldRender==='function'&&!oldRender.__wkHeaderWrapped){window.render=function(){const r=oldRender.apply(this,arguments);setTimeout(install,0);return r};window.render.__wkHeaderWrapped=true;}
 })();
 </script>
+<style id="wk-final-ui">
+/* En-tête : ☰ + logo/nom de l'utilisateur à gauche, abonnement + cloche à droite */
+.wrap>header.wk-hdr{display:flex!important;align-items:center!important;gap:12px!important;flex-wrap:nowrap!important;min-height:64px!important;grid-template-columns:none!important}
+.wk-hdr-id{display:flex;align-items:center;gap:10px;min-width:0;background:transparent!important;color:var(--text)!important;padding:4px 8px;border-radius:14px;font-weight:750}
+.wk-hdr-id:hover{background:var(--soft)!important}
+.wk-hdr-name{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.wk-hdr-logo{width:34px;height:34px;border-radius:9px}
+.wk-hdr-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.wk-green-check{width:19px;height:19px;font-size:12px;margin-left:6px;flex:none}
+/* Barre du bas : recherche + trois points */
+#wk-bottom-more{display:none!important}
+#wk-dock{position:fixed;left:0;right:0;bottom:0;z-index:140;display:flex;align-items:center;gap:10px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -4px 16px rgba(15,23,42,.06)}
+#wk-dock #wk-searchbar{flex:1 1 auto!important;max-width:none!important;min-width:0!important;margin:0!important;order:0!important}
+#wk-dock #wk-search-results{top:auto!important;bottom:calc(100% + 10px)!important}
+.wk-dock-more{position:relative;flex:0 0 auto}
+.wk-dock-more>button{width:46px;height:46px;border-radius:50%;padding:0;font-size:24px;line-height:1;background:var(--soft);color:var(--brand)}
+.wk-dock-menu{display:none;position:absolute;right:0;bottom:calc(100% + 10px);min-width:200px;padding:7px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.18)}
+.wk-dock-more.open .wk-dock-menu{display:grid;gap:3px}
+.wk-dock-menu button{text-align:left;background:transparent;color:var(--text);padding:10px 12px;border-radius:9px}
+.wk-dock-menu button:hover{background:var(--bg)}
+body{padding-bottom:84px}
+#toast{bottom:calc(86px + env(safe-area-inset-bottom))!important}
+@media(min-width:851px){.wrap>nav#nav{height:calc(100vh - 170px)!important;max-height:calc(100vh - 170px)!important}}
+@media(max-width:850px){.wrap>nav#nav{bottom:70px!important}}
+@media(max-width:700px){.wk-hdr-name{max-width:140px;font-size:13px}#wk-dock{padding:8px 10px calc(8px + env(safe-area-inset-bottom))}}
+/* Profil candidat */
+.wk-pf-layout{display:grid;grid-template-columns:minmax(230px,.8fr) minmax(0,2fr);gap:16px;align-items:start}
+.wk-pf-layout main>.wk-profile-panel{margin-bottom:14px}
+@media(max-width:800px){.wk-pf-layout{grid-template-columns:1fr}}
+.wk-verif-status{display:inline-flex;border-radius:999px;padding:6px 11px;font-weight:700;font-size:13px;background:var(--soft)}
+/* Réactions style Facebook */
+.wk-social-actions{position:relative}
+.wk-fb-bar{position:absolute;bottom:calc(100% + 6px);left:0;z-index:60;display:flex;gap:4px;padding:6px 10px;background:var(--surface);border:1px solid var(--line);border-radius:999px;box-shadow:0 8px 26px rgba(0,0,0,.2)}
+.wk-fb-bar button{font-size:26px;padding:2px 5px;background:transparent;border:0;transition:transform .12s}
+.wk-fb-bar button:hover{transform:scale(1.35) translateY(-4px)}
+#view [data-wk-trial-offer]{display:none!important}
+</style>
+<script id="wk-final-script">
+try{
+/* ===== 1. En-tête propre + barre du bas ===== */
+const wkMenuItems=()=>!S.user?[['connexion','Connexion'],['inscription','Créer un compte'],['tarifs','Tarifs']]:[['compte',role()==='entreprise'?'Profil entreprise':'Mon profil'],['tarifs','Abonnement'],['notifications','Notifications'],['parametres','Paramètres']];
+function wkBuildChrome(){
+ const old=document.querySelector('.wrap>header');if(!old||old.classList.contains('wk-hdr'))return;
+ const hd=document.createElement('header');hd.className='wk-hdr';
+ let tg=old.querySelector('.wk-menu-toggle');
+ if(!tg){tg=document.createElement('button');tg.type='button';tg.className='wk-menu-toggle ghost';tg.textContent='☰';tg.setAttribute('aria-label','Menu');tg.onclick=()=>document.querySelector('#nav').classList.toggle('wk-nav-open')}
+ const idb=document.createElement('button');idb.type='button';idb.id='wkHdrId';idb.className='wk-hdr-id';idb.dataset.a='go';idb.dataset.id='compte';
+ const right=document.createElement('div');right.className='wk-hdr-right';
+ const plan=old.querySelector('#plan'),bell=old.querySelector('#bell');
+ if(plan)right.appendChild(plan);if(bell)right.appendChild(bell);
+ hd.append(tg,idb,right);
+ const sb=document.getElementById('wk-searchbar');
+ if(sb){const bt=sb.querySelector('#wk-search-submit');if(bt)bt.textContent='→'}
+ const dock=document.createElement('div');dock.id='wk-dock';
+ const more=document.createElement('div');more.className='wk-dock-more';
+ more.innerHTML='<div class="wk-dock-menu"></div><button type="button" aria-label="Plus d’options" aria-expanded="false">⋯</button>';
+ const mb=more.querySelector('button'),mm=more.querySelector('.wk-dock-menu');
+ mb.addEventListener('click',()=>{mm.innerHTML=wkMenuItems().map(x=>`<button type="button" data-a="go" data-id="${x[0]}">${x[1]}</button>`).join('');const o=more.classList.toggle('open');mb.setAttribute('aria-expanded',String(o))});
+ document.addEventListener('click',e=>{if(!more.contains(e.target)||e.target.closest('.wk-dock-menu button')){more.classList.remove('open');mb.setAttribute('aria-expanded','false')}});
+ if(sb)dock.appendChild(sb);dock.appendChild(more);
+ old.replaceWith(hd);document.body.appendChild(dock);
+ document.getElementById('wk-bottom-more')?.remove();
+}
+function wkPaintHdr(){
+ wkBuildChrome();
+ const id=document.getElementById('wkHdrId');if(!id)return;const u=S.user;
+ if(!u){id.dataset.id='accueil';id.innerHTML=`<img class="wk-hdr-logo" src="${LOGO}" alt=""><span class="wk-hdr-name">Workly × Evolia</span>`;return}
+ const co=u.role==='entreprise',name=co?(u.company||u.nom||'Mon entreprise'):(u.nom||u.prenom||'Mon profil');
+ id.dataset.id='compte';
+ id.innerHTML=av(u.avatar_url||u.logo_url||u.logo,name,38)+`<span class="wk-hdr-name">${esc(name)}</span>`+(u.verified?'<span class="wk-green-check" title="Compte vérifié">✓</span>':'');
+}
+const _dn=drawNav;drawNav=function(r){_dn(r);wkPaintHdr()};
+wkPaintHdr();
+
+/* ===== 2. Profil candidat (modèle page entreprise) ===== */
+const wkMedia=(p,v)=>{const a=Array.isArray(p)?p:[],b=Array.isArray(v)?v:[];return a.map(u=>/\.pdf(?:$|[?#])/i.test(u)?`<a class="wk-feed-document" href="${esc(u)}" target="_blank" rel="noopener">📄 Ouvrir le document PDF</a>`:`<img src="${esc(u)}" alt="" loading="lazy" style="width:100%;max-height:340px;object-fit:contain;border-radius:12px;background:var(--bg);margin-top:8px">`).join('')+b.map(u=>`<video controls playsinline preload="metadata" style="width:100%;max-height:420px;border-radius:12px;background:#101828;margin-top:8px"><source src="${esc(u)}"></video>`).join('')};
+async function wkPfLoadPosts(){const h=$('#wkPfPosts');if(!h)return;
+ const r=await SB.from('candidate_posts').select('*').eq('owner',S.uid).order('created_at',{ascending:false}).limit(20);
+ if(r.error){h.innerHTML='<div class="card meta">Publications indisponibles.</div>';return}
+ h.innerHTML=(r.data||[]).map(x=>`<article class="card"><div class="row"><span class="meta">${new Date(x.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}</span><button class="lnk" data-a="wkPfDel" data-id="${x.id}">Supprimer</button></div><div style="white-space:pre-wrap;margin:8px 0">${esc(x.body||'')}</div>${wkMedia(x.photos,x.videos)}</article>`).join('')||'<div class="card meta">Aucune publication pour le moment.</div>'}
+const _vc=vCompte;
+vCompte=function(){
+ if(role()!=='candidat'||!S.user)return _vc();
+ const u=S.user,name=u.nom||'Candidat';
+ $('#view').innerHTML=`<div class="wk-pf-layout"><aside>
+  <section class="card co-company-card"><div class="co-cover"></div><div class="co-company-info">${av(u.avatar_url,name,72)}<h1 style="display:flex;align-items:center">${esc(name)}${u.verified?'<span class="wk-green-check" title="Compte vérifié">✓</span>':''}</h1><p class="meta">${esc(u.poste||'Poste visé non renseigné')}</p><p class="meta">${[u.ville,u.pays].filter(Boolean).map(esc).join(' · ')||'Localisation non renseignée'}</p><p class="meta">${esc(u.email||'')}</p><button type="button" data-a="wkPfPublish">＋ Publier</button></div></section>
+  <section class="card"><h2>Crédits</h2><strong style="font-size:30px">${Number(u.credits||0)}</strong></section>
+ </aside><main>
+  <details class="wk-profile-panel" open><summary>👤 Informations professionnelles</summary><div class="wk-profile-content">${avatarBlock()}${picker('c','poste','',u.field)}<div class="grid" style="margin-top:12px"><div><label for="poste">Poste visé</label><input id="poste" value="${esc(u.poste||'')}"></div><div><label for="niv">Niveau</label><select id="niv">${LV.map((l,i)=>`<option value="${i}" ${i==u.niveau?'selected':''}>${esc(l)}</option>`).join('')}</select></div><div><label>Pays</label>${countrySel('pays',u.pays||'')}</div><div><label>Ville</label>${citySel('ville',u.pays||'',u.ville||'')}</div><div style="grid-column:1/-1"><label for="skills">Compétences</label><input id="skills" value="${esc(u.skills||'')}"></div></div><div class="wk-profile-actions"><button type="button" data-a="psave">Enregistrer</button></div></div></details>
+  <details class="wk-profile-panel"><summary>📄 Mon CV</summary><div class="wk-profile-content"><label for="cv">Contenu du CV</label><textarea id="cv" rows="8">${esc(u.cv||'')}</textarea><div class="wk-profile-actions"><button type="button" data-a="psave">Enregistrer</button><button class="ghost" type="button" data-a="exportCVPDF">Exporter en PDF</button><button class="ghost" type="button" data-a="go" data-id="cvstudio">Ouvrir le Studio CV</button></div></div></details>
+  <details class="wk-profile-panel"><summary>🔒 Confidentialité et données</summary><div class="wk-profile-content"><label style="display:flex;gap:9px;font-size:14px;font-weight:400"><input type="checkbox" data-a="allowpool" ${u.allow_pool?'checked':''}> Autoriser les entreprises auxquelles je postule à conserver mon profil dans leur vivier de talents.</label><label style="display:flex;gap:9px;font-size:14px;font-weight:400;margin-top:10px"><input type="checkbox" data-a="aiconsent" ${u.ai_consent?'checked':''}> Autoriser Evolia à analyser les textes que j’envoie, sans nom, e-mail ni téléphone.</label><div class="wk-profile-actions"><button class="ghost" data-a="dldata">Télécharger mes données</button></div></div></details>
+  <div class="co-section-title"><h2>Mes publications</h2></div><div id="wkPfPosts"><p class="meta">Chargement…</p></div>
+ </main></div>`;
+ wkPfLoadPosts();
+};
+A.wkPfPublish=()=>{location.hash='feed';let n=0;const t=setInterval(()=>{const b=document.querySelector('#view .wk-publish-toggle');if(b){clearInterval(t);b.click()}else if(++n>40)clearInterval(t)},150)};
+A.wkPfDel=async id=>{if(!confirm('Supprimer cette publication ?'))return;const r=await SB.from('candidate_posts').delete().eq('id',+id).eq('owner',S.uid);if(r.error){toast(r.error.message);return}wkPfLoadPosts()};
+
+/* ===== 3. Paramètres : vérification, version premium, langue ===== */
+async function wkPaintVerif(){const h=$('#wkVerifHost');if(!h)return;h.innerHTML='<p class="meta">Chargement…</p>';
+ const r=await SB.rpc('my_candidate_verification');
+ if(r.error){h.innerHTML=`<p class="meta">Statut indisponible : ${esc(r.error.message)}</p>`;return}
+ const d=r.data||{status:'none'};
+ if(S.user.verified||d.status==='approved'){h.innerHTML='<p><span class="wk-green-check" style="margin:0 6px 0 0">✓</span>Ton compte est vérifié.</p>';return}
+ if(d.status==='pending'&&d.has_document){h.innerHTML='<p><span class="wk-verif-status">Vérification en attente</span></p><p class="meta">Ton justificatif a été transmis. L’équipe WORKLY examine ta demande.</p>';return}
+ h.innerHTML=(d.status==='rejected'?`<p class="warn"><b>Vérification refusée.</b> Motif : ${esc(d.admin_note||'non précisé')}</p>`:'')+`<p class="meta">Envoie un justificatif d’identité pour obtenir le badge vert « compte vérifié ». Il est transmis de manière privée à l’administration.</p><label>Type de justificatif</label><select id="wkVfType"><option value="identity_card">Carte nationale d’identité</option><option value="passport">Passeport</option><option value="residence_permit">Titre de séjour</option><option value="other">Autre justificatif</option></select><label style="margin-top:10px">Fichier (PDF, JPG ou PNG, 8 Mo maximum)</label><input id="wkVfFile" type="file" accept="application/pdf,image/jpeg,image/png"><div class="btns"><button data-a="wkVfSend">Envoyer mon justificatif</button></div>`}
+A.wkVfSend=async()=>{const f=$('#wkVfFile')?.files?.[0];if(!f){toast('Choisis ton justificatif');return}
+ if(!['application/pdf','image/jpeg','image/png'].includes(f.type)){toast('Format non accepté (PDF, JPG ou PNG)');return}
+ if(f.size>8*1024*1024){toast('Fichier trop lourd (8 Mo maximum)');return}
+ const path=`${S.uid}/${Date.now()}_${(f.name||'justificatif').normalize('NFKD').replace(/[^a-zA-Z0-9._-]/g,'_').slice(-90)}`;
+ try{const up=await SB.storage.from('candidate-verifications').upload(path,f,{upsert:false,contentType:f.type});if(up.error)throw up.error;
+  const u=S.user,sub=await SB.rpc('submit_candidate_verification',{p_document_type:$('#wkVfType').value,p_document_path:path,p_submitted_data:{nom:u.nom||'',email:u.email||'',pays:u.pays||'',ville:u.ville||'',poste:u.poste||''}});
+  if(sub.error)throw sub.error;toast('Justificatif envoyé : demande en attente');wkPaintVerif()}
+ catch(e){try{await SB.storage.from('candidate-verifications').remove([path])}catch(_){}toast('Envoi impossible : '+(e.message||e))}};
+const _vp=vParam;
+vParam=function(){_vp();const v=$('#view');if(!v)return;
+ v.querySelector('#wkLanguageFull')?.remove();v.querySelector('#wkCandidateVerificationSettings')?.remove();
+ const lp=[...v.querySelectorAll('details')].find(d=>/Langue/.test(d.querySelector('summary')?.textContent||''));
+ lp?.querySelectorAll('p.meta').forEach(p=>p.textContent='Les menus et boutons principaux sont traduits en anglais. Les autres langues seront ajoutées progressivement.');
+ if(role()!=='candidat'||v.querySelector('[data-wk-pf-settings]'))return;
+ const u=S.user,tr=u.candidate_trial_ends_at?new Date(u.candidate_trial_ends_at):null,act=tr&&tr>new Date(),used=!!u.candidate_trial_used;
+ const s=document.createElement('section');s.dataset.wkPfSettings='1';
+ s.innerHTML=`<details class="wk-settings-entry" id="wkVerifSettings"><summary>Vérification du compte</summary><div class="wk-settings-content" id="wkVerifHost"></div></details><details class="wk-settings-entry"><summary>Version premium</summary><div class="wk-settings-content"><p>${act?'Ton essai premium est actif jusqu’au '+tr.toLocaleDateString('fr-FR')+'.':used?'Ton essai gratuit de sept jours a déjà été utilisé.':'Essaie la version premium pendant sept jours gratuitement, sans carte bancaire. À la fin de l’essai, ton compte revient automatiquement à la formule gratuite.'}</p>${!used&&!act?'<button data-a="wkStartTrial">Essayer la version premium pendant sept jours gratuitement</button>':''}</div></details>`;
+ v.appendChild(s);
+ s.querySelector('#wkVerifSettings').addEventListener('toggle',e=>{if(e.target.open)wkPaintVerif()})};
+/* La langue choisie est transmise à la fonction « evolia » (utilisable côté serveur) */
+if(SB&&SB.functions){const _inv=SB.functions.invoke.bind(SB.functions);SB.functions.invoke=(n,o)=>{if(n==='evolia'&&o&&o.body)o.body.lang=load('lang','fr');return _inv(n,o)}}
+
+/* ===== 4. Fil : bouton Publier fiable, publication entreprise, réactions façon Facebook ===== */
+const _fd=A.feed;
+A.feed=async function(){await _fd.apply(this,arguments);
+ document.querySelector('#view [data-wk-trial-offer]')?.remove();document.querySelector('#view .wk-live-card')?.remove();
+ const top=document.querySelector('#view .wk-feed-top'),comp=document.querySelector('#view .wk-feed-compose');
+ if(top&&comp){comp.hidden=true;comp.classList.add('wk-publish-panel');
+  const b=document.createElement('button');b.type='button';b.className='wk-publish-toggle';b.textContent='＋ Publier';
+  const old=top.querySelector('.wk-publish-toggle');if(old)old.replaceWith(b);else top.appendChild(b);
+  b.addEventListener('click',()=>{comp.hidden=!comp.hidden;if(!comp.hidden){comp.scrollIntoView({behavior:'smooth',block:'start'});document.getElementById('wkFeedBody')?.focus()}})}};
+const _fp=A.feedPost;
+A.feedPost=async function(){
+ if(role()!=='entreprise')return _fp.apply(this,arguments);
+ const body=($('#wkFeedBody')?.value||'').trim(),files=[...Array.from($('#wkFeedFiles')?.files||[]),...Array.from($('#wkFeedDocs')?.files||[])];
+ if(body.length<2&&!files.length){toast('Écris un message ou joins un média');return}
+ const photos=[],videos=[],okVideo=['business','pro'].includes(S.user.plan||'gratuit');
+ for(const f of files){try{const it=await wkUploadPostFile(f,'company');if(it.kind==='video'){if(!okVideo){toast('La vidéo est réservée aux offres Business et Pro');return}videos.push(it.url)}else photos.push(it.url)}catch(e){toast('Envoi du média impossible : '+e.message);return}}
+ const r=await SB.from('company_posts').insert({owner:S.uid,body,photos,videos});
+ if(r.error){toast('Publication impossible : '+r.error.message);return}
+ toast('Publication ajoutée');A.feed()};
+const FB=[['like','👍','J’aime'],['love','❤️','J’adore'],['haha','😂','Haha'],['wow','😮','Waouh'],['sad','😢','Triste'],['clap','👏','Bravo']];
+const DEF='👍 J’aime\u200b',LIKE='👍 J’aime';let fbT=null,fbLP=false;
+const fbClose=()=>document.querySelectorAll('.wk-fb-bar').forEach(x=>x.remove());
+function fbOpen(b){fbClose();b.parentElement.insertAdjacentHTML('beforeend',`<div class="wk-fb-bar">${FB.map(([k,e,l])=>`<button type="button" title="${l}" aria-label="${l}" data-a="wkSetReaction" data-id="${b.dataset.id}|${k}">${e}</button>`).join('')}</div>`)}
+const fbSel='[data-a="wkReactionPicker"]',coarse=()=>matchMedia('(pointer:coarse)').matches;
+document.addEventListener('mouseover',e=>{const b=e.target.closest(fbSel);if(!b||coarse())return;clearTimeout(fbT);fbT=setTimeout(()=>fbOpen(b),350)});
+document.addEventListener('mouseout',e=>{const b=e.target.closest(fbSel);if(b)clearTimeout(fbT);const bar=e.target.closest('.wk-fb-bar');if(bar&&!bar.contains(e.relatedTarget)&&!(e.relatedTarget&&e.relatedTarget.closest&&e.relatedTarget.closest(fbSel)))setTimeout(fbClose,300)});
+document.addEventListener('pointerdown',e=>{const b=e.target.closest(fbSel);if(!b||e.pointerType==='mouse')return;clearTimeout(fbT);fbT=setTimeout(()=>{fbLP=true;fbOpen(b)},450)});
+['pointerup','pointercancel'].forEach(t=>document.addEventListener(t,()=>clearTimeout(fbT)));
+document.addEventListener('contextmenu',e=>{if(e.target.closest(fbSel))e.preventDefault()});
+document.addEventListener('click',e=>{if(!e.target.closest('.wk-fb-bar,'+fbSel)||e.target.closest('.wk-fb-bar button'))fbClose()});
+A.wkReactionPicker=async(key,b)=>{
+ if(fbLP){fbLP=false;return}fbClose();if(!b)return;
+ if(b.textContent.endsWith('\u200b')||/Réagir/.test(b.textContent))return A.wkSetReaction(key+'|like');
+ const r=await SB.rpc('community_set_post_reaction',{p_post_key:key,p_kind:''});
+ if(r.error){toast('Réaction impossible : '+r.error.message);return}
+ b.textContent=DEF;b.classList.remove('wk-liked');
+ const s=b.closest('[data-wk-social]')?.querySelector('[data-wk-summary]');if(s)s.textContent=s.textContent.replace(/(\d+) réaction/,(m,n)=>Math.max(0,n-1)+' réaction')};
+new MutationObserver(()=>{document.querySelectorAll('#view '+fbSel).forEach(b=>{const t=b.textContent;
+ if(t==='😊 Réagir'){b.textContent=DEF;b.classList.remove('wk-liked')}else if(t===DEF)b.classList.remove('wk-liked');else b.classList.add('wk-liked')})}).observe($('#view'),{childList:true,subtree:true,characterData:true});
+}catch(e){console.error('Final UI :',e)}
+</script>
 </body>
 </html>
