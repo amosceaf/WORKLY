@@ -1651,5 +1651,285 @@ new MutationObserver(()=>{document.querySelectorAll('#view '+fbSel).forEach(b=>{
  if(t==='😊 Réagir'){b.textContent=DEF;b.classList.remove('wk-liked')}else if(t===DEF)b.classList.remove('wk-liked');else b.classList.add('wk-liked')})}).observe($('#view'),{childList:true,subtree:true,characterData:true});
 }catch(e){console.error('Final UI :',e)}
 </script>
+<style id="wk-corrections-v16">
+/* ===== En-tête : identité + ligne 2 (☰ + recherche) ===== */
+.wrap>header.wk-hdr{flex-wrap:wrap!important;row-gap:6px!important;position:sticky!important;top:0!important;z-index:70!important;padding:10px 0 8px!important;height:auto!important}
+.wk-hdr-id{order:1}
+.wk-hdr-right{order:2}
+.wk-hdr-row2{order:3;flex:0 0 100%;display:flex;align-items:center;gap:10px;min-width:0}
+.wk-hdr-row2 .wk-menu-toggle{display:inline-flex!important;align-items:center;justify-content:center;width:44px;height:44px;padding:0;font-size:22px;margin:0!important;flex:0 0 auto}
+.wk-hdr-row2 #wk-searchbar{flex:1 1 auto!important;max-width:620px!important;min-width:0!important;margin:0!important;order:0!important;position:relative}
+.wk-hdr-row2 #wk-search-results{top:calc(100% + 7px)!important;bottom:auto!important}
+.wk-hdr-text{display:flex;flex-direction:column;align-items:flex-start;line-height:1.2;min-width:0}
+.wk-hdr-name{max-width:340px!important;font-size:17px!important;font-weight:800}
+.wk-vbadge{font-size:11px;font-weight:800;padding:2px 9px;border-radius:99px;margin-top:3px}
+.wk-vbadge.ok{background:#e8f7ee;color:#16733b}
+.wk-vbadge.no{background:var(--soft);color:var(--muted)}
+.wk-hdr-id img,.wk-hdr-id>div{width:46px!important;height:46px!important}
+#wk-dock{background:transparent!important;border:0!important;box-shadow:none!important;left:auto!important;right:0!important;padding:10px 16px calc(10px + env(safe-area-inset-bottom))!important;pointer-events:none}
+#wk-dock *{pointer-events:auto}
+@media(min-width:851px){
+ .wrap>nav#nav{top:128px!important;height:calc(100vh - 144px)!important;max-height:calc(100vh - 144px)!important}
+ body.wk-nav-collapsed .wrap{grid-template-columns:0 minmax(0,1fr)!important;column-gap:0!important}
+ body.wk-nav-collapsed .wrap>nav#nav{display:none!important}
+ body.wk-nav-collapsed .wrap>main#view{grid-column:1/-1!important}
+}
+@media(max-width:850px){.wrap>nav#nav{top:128px!important;bottom:70px!important}.wk-hdr-name{max-width:150px!important;font-size:14px!important}}
+/* ===== Réactions façon Facebook ===== */
+.wk-rx2{position:absolute;bottom:calc(100% + 8px);left:0;display:flex;gap:2px;padding:6px 10px;background:var(--surface);border:1px solid var(--line);border-radius:999px;box-shadow:0 8px 28px rgba(0,0,0,.22);z-index:90}
+.wk-rx2 button{position:relative;font-size:30px;line-height:1;background:transparent!important;border:0;padding:0 4px;transition:transform .15s}
+.wk-rx2 button:hover{transform:scale(1.5) translateY(-8px)}
+.wk-rx2 i{display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font-size:11px;font-style:normal;font-weight:700;background:#222;color:#fff;padding:3px 8px;border-radius:10px;white-space:nowrap;margin-bottom:4px}
+.wk-rx2 button:hover i{display:block}
+/* ===== Bouton S'abonner ===== */
+.wk-fol-btn{font-size:12px!important;padding:4px 10px!important;margin-right:8px;border-radius:99px!important;vertical-align:middle}
+/* ===== Case Comparer ===== */
+.wk-cmp-line{margin:2px 0 8px}
+.wk-cmp{display:inline-flex!important;align-items:center;gap:6px;padding:6px 12px;border:1px dashed var(--brand);border-radius:99px;color:var(--brand)!important;font-weight:700!important;cursor:pointer;white-space:nowrap}
+/* ===== WORKLY+ entreprise ===== */
+.wkpc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin:16px 0}
+.wkpc-card{text-align:left;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:18px;cursor:pointer;white-space:normal;display:flex;flex-direction:column;gap:6px;min-height:170px}
+.wkpc-card:hover{border-color:var(--brand);box-shadow:0 8px 24px rgba(20,35,70,.1)}
+.wkpc-ic{width:46px;height:46px;border-radius:13px;background:var(--soft);display:grid;place-items:center;font-size:24px}
+.wkpc-card h2{font-size:16px;margin:6px 0 2px}.wkpc-card p{margin:0;font-size:13px;color:var(--muted)}
+.wkpc-tbl{width:100%;border-collapse:collapse;font-size:14px}.wkpc-tbl th,.wkpc-tbl td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left}
+.wkpc-sc{font-weight:800;color:var(--ok)}
+</style>
+
+<script id="wk-corrections-v16-script">
+(function(){'use strict';try{
+const q=s=>document.querySelector(s),qa=s=>[...document.querySelectorAll(s)];
+
+/* ================= 1. EN-TÊTE ================= */
+function paintId(){
+ const id=q('#wkHdrId');if(!id)return;const u=S.user;if(!u)return;
+ const co=u.role==='entreprise',name=co?(u.company||u.nom||'Mon entreprise'):(u.nom||u.prenom||'Mon profil');
+ const logo=co?(u.logo_url||u.logo||u.avatar_url):(u.avatar_url||u.photo);
+ const badge=u.verified?`<span class="wk-vbadge ok">${co?'✓ Entreprise vérifiée':'✓ Vérifié'}</span>`:`<span class="wk-vbadge no">${co?'Entreprise non vérifiée':'Non vérifié'}</span>`;
+ id.innerHTML=av(logo,name,46)+`<span class="wk-hdr-text"><b class="wk-hdr-name">${esc(name)}</b>${badge}</span>`;
+}
+function moveRow2(){
+ const hd=q('.wrap>header.wk-hdr');if(!hd)return;
+ let row=hd.querySelector('.wk-hdr-row2');
+ if(!row){row=document.createElement('div');row.className='wk-hdr-row2';hd.appendChild(row)}
+ const tg=q('.wk-menu-toggle'),sb=q('#wk-searchbar');
+ if(tg&&tg.parentElement!==row){row.prepend(tg);
+  tg.onclick=()=>{if(matchMedia('(min-width:851px)').matches)document.body.classList.toggle('wk-nav-collapsed');else q('#nav').classList.toggle('wk-nav-open')}}
+ if(sb&&sb.parentElement!==row)row.appendChild(sb);
+}
+function plusBits(){
+ if(!S.user)return;
+ const right=q('.wk-hdr-right');
+ if(right&&!q('#wkPlusBtn')){const b=document.createElement('button');b.id='wkPlusBtn';b.type='button';b.className='ghost';b.dataset.a='go';b.dataset.id='worklyplus';b.textContent='✨ WORKLY+';right.prepend(b)}
+ if(role()==='entreprise'){const n=q('#nav .wk-nav-links');
+  if(n&&!q('#nav a[href="#worklyplus"]')){n.insertAdjacentHTML('afterbegin',`<a href="#worklyplus" class="${route()==='worklyplus'?'on':''}">✨ WORKLY+</a>`)}}
+}
+const _dn=drawNav;
+drawNav=function(r){_dn(r);paintId();moveRow2();plusBits()};
+
+/* ================= 2. NETTOYAGE PUBLICITÉ + COMPARER + S'ABONNER ================= */
+let FOL=null,FOLUID=null,FOLLOAD=false;
+async function loadFol(){
+ if(role()!=='candidat'||!S.uid){FOL=new Set();return}
+ const r=await SB.from('company_follows').select('company').eq('candidate',S.uid);
+ FOL=new Set((r.data||[]).map(x=>String(x.company)));FOLUID=S.uid;
+}
+const folTxt=(b,on)=>{b.textContent=on?'✓ Abonné':'＋ S’abonner';b.classList.toggle('ghost',on)};
+function addFollow(){
+ if(role()!=='candidat')return;
+ if(FOL===null||FOLUID!==S.uid){if(!FOLLOAD){FOLLOAD=true;loadFol().then(()=>{FOLLOAD=false;sched()})}return}
+ qa('#view .wk-feed-card [data-a="co"]').forEach(h=>{
+  if(h.querySelector('[data-wk-fol]'))return;const owner=String(h.dataset.id||'');
+  if(!owner||owner===S.uid)return;const b=h.querySelector('b');if(!b)return;
+  const btn=document.createElement('button');btn.type='button';btn.className='wk-fol-btn';
+  btn.dataset.a='wkFollowCo';btn.dataset.id=owner;btn.dataset.wkFol=owner;folTxt(btn,FOL.has(owner));b.before(btn);
+ });
+}
+A.wkFollowCo=async id=>{
+ if(role()!=='candidat'){toast('Connecte-toi avec un compte candidat pour t’abonner');return}
+ if(FOL===null)await loadFol();
+ const on=FOL.has(String(id));
+ const r=on?await SB.from('company_follows').delete().eq('company',id).eq('candidate',S.uid):await SB.from('company_follows').insert({company:id,candidate:S.uid});
+ if(r.error&&r.error.code!=='23505'){toast('Abonnement impossible : '+r.error.message);return}
+ on?FOL.delete(String(id)):FOL.add(String(id));
+ qa('[data-wk-fol="'+id+'"]').forEach(b=>folTxt(b,!on));
+ toast(on?'Abonnement retiré':'Abonné : tu seras prévenu des nouveautés');
+};
+function cleanAds(){
+ qa('#view .wk-ad-privacy').forEach(x=>x.remove());
+ qa('#view details').forEach(d=>{const s=d.querySelector(':scope>summary');if(s&&/publicit/i.test(s.textContent))d.remove()});
+ qa('#view .card').forEach(c=>{const h=c.querySelector(':scope>h2');if(h&&/Données relatives à la publicité/i.test(h.textContent))c.remove()});
+}
+function moveCompare(){
+ qa('#view input[data-cmp]').forEach(i=>{
+  const l=i.closest('label');if(!l||l.dataset.wkMoved)return;
+  const row=l.parentElement;l.dataset.wkMoved='1';l.className='wk-cmp';
+  const line=document.createElement('div');line.className='wk-cmp-line';line.appendChild(l);row.after(line);
+ });
+}
+
+/* ================= 3. RÉACTIONS FACEBOOK ================= */
+const RX2=[['like','👍','J’aime','#1877f2'],['love','❤️','J’adore','#f33e58'],['haha','😂','Haha','#d99a00'],['wow','😮','Waouh','#d99a00'],['sad','😢','Triste','#d99a00'],['clap','👏','Bravo','#d99a00']];
+const SEL='[data-a="wkReactionPicker"]';let T=null,CT=null,LP=false,ANCH=null;
+const closeBars=()=>qa('.wk-rx2').forEach(x=>x.remove());
+const curR=b=>{const t=b.textContent||'';if(t.endsWith('\u200b')||/Réagir/.test(t))return'';const f=RX2.find(x=>t.includes(x[1]));return f?f[0]:''};
+function paintR(b,k){
+ const f=RX2.find(x=>x[0]===k);
+ if(f){b.textContent=f[1]+' '+f[2];b.style.color=f[3];b.style.fontWeight='800';b.classList.add('wk-liked')}
+ else{b.textContent='👍 J’aime\u200b';b.style.color='';b.style.fontWeight='';b.classList.remove('wk-liked')}
+}
+async function setR(b,k){
+ const key=b.dataset.id,prev=curR(b),next=(prev===k)?'':k;
+ const r=await SB.rpc('community_set_post_reaction',{p_post_key:key,p_kind:next});
+ if(r.error){toast('Réaction impossible : '+r.error.message);return}
+ paintR(b,next);b.dataset.wkRx=next;
+ const s=b.closest('[data-wk-social]')?.querySelector('[data-wk-summary]');
+ if(s){const d=(next?1:0)-(prev?1:0);s.textContent=s.textContent.replace(/^(\d+) réaction/,(m,n)=>Math.max(0,+n+d)+' réaction')}
+}
+function openBar(b){
+ closeBars();ANCH=b;
+ b.parentElement.insertAdjacentHTML('beforeend',`<div class="wk-rx2" role="group" aria-label="Réactions" style="left:${b.offsetLeft}px">${RX2.map(x=>`<button type="button" data-k="${x[0]}" aria-label="${x[2]}"><i>${x[2]}</i>${x[1]}</button>`).join('')}</div>`);
+}
+const inRx=t=>t&&t.closest&&(t.closest(SEL)||t.closest('.wk-rx2'));
+const coarse=()=>matchMedia('(pointer:coarse)').matches;
+window.addEventListener('mouseover',e=>{
+ if(!inRx(e.target))return;e.stopPropagation();clearTimeout(CT);
+ const b=e.target.closest(SEL);if(b&&!coarse()){clearTimeout(T);T=setTimeout(()=>openBar(b),380)}
+},true);
+window.addEventListener('mouseout',e=>{
+ if(!inRx(e.target))return;e.stopPropagation();clearTimeout(T);
+ if(!inRx(e.relatedTarget)){CT=setTimeout(closeBars,450)}
+},true);
+window.addEventListener('pointerdown',e=>{
+ const b=e.target.closest&&e.target.closest(SEL);if(!b||e.pointerType==='mouse')return;
+ e.stopPropagation();clearTimeout(T);T=setTimeout(()=>{LP=true;openBar(b)},450);
+},true);
+['pointerup','pointercancel'].forEach(t=>window.addEventListener(t,()=>clearTimeout(T),true));
+window.addEventListener('contextmenu',e=>{if(inRx(e.target))e.preventDefault()},true);
+window.addEventListener('click',e=>{
+ const opt=e.target.closest&&e.target.closest('.wk-rx2 [data-k]');
+ if(opt){e.stopPropagation();e.preventDefault();const b=ANCH;closeBars();if(b)setR(b,opt.dataset.k);return}
+ const b=e.target.closest&&e.target.closest(SEL);
+ if(b){e.stopPropagation();e.preventDefault();if(LP){LP=false;return}closeBars();setR(b,curR(b)||'like');return}
+ closeBars();
+},true);
+function repaintR(){
+ qa('#view '+SEL).forEach(b=>{const k=curR(b);if(b.dataset.wkRx!==k){b.dataset.wkRx=k;if(k)paintR(b,k)}});
+}
+
+/* ================= 4. OBSERVATEUR ================= */
+let pend=false;
+function tick(){cleanAds();moveCompare();addFollow();repaintR();paintId();moveRow2();plusBits()}
+function sched(){if(pend)return;pend=true;requestAnimationFrame(()=>{pend=false;try{tick()}catch(e){console.error(e)}})}
+const view=q('#view');if(view)new MutationObserver(sched).observe(view,{childList:true,subtree:true});
+window.addEventListener('hashchange',sched);
+
+/* ================= 5. WORKLY+ ENTREPRISE ================= */
+const PLUS=[
+['offers','📝','Publication d’offres','Création, modification et sponsorisation des annonces.'],
+['apps','📋','Gestion des candidatures','Suivi, tri et classement des candidats.'],
+['search','🔎','Recherche avancée','Filtres par métier, compétences, expérience et pays.'],
+['match','🎯','WORKLY Match AI','Mise en correspondance intelligente des candidats et des offres.'],
+['pool','⭐','Talent Pool','Constitution d’une base de talents.'],
+['stats','📊','Statistiques avancées','Performances des annonces et analyses de recrutement.'],
+['team','👥','Gestion d’équipe RH','Collaboration entre plusieurs recruteurs.'],
+['vis','🚀','Visibilité renforcée','Meilleure exposition des offres.'],
+['import','⬆️','Importation d’offres','Possibilité d’importer des annonces externes.'],
+['guar','🛡️','Garantie Satisfait ou Prolongé','Prolongation d’une annonce sponsorisée si elle reçoit moins de 10 candidatures ciblées.']];
+let PK2='home';
+const isSp=j=>(j.featured_until&&new Date(j.featured_until)>new Date())||(j.urgent_until&&new Date(j.urgent_until)>new Date());
+const fdt=d=>new Date(d).toLocaleDateString('fr-FR');
+const yrsOf=t=>{const ys=[...String(t).toLowerCase().matchAll(/(\d{1,2})\s*(ans|an|années)/g)].map(x=>+x[1]);return ys.length?Math.max(...ys):0};
+const jobSel=id=>`<select id="${id}">${S.mine.map(j=>`<option value="${j.id}">${esc(j.title)}</option>`).join('')}</select>`;
+
+function panel(k){
+ const L=S.recv;
+ if(k==='offers')return `<p>Crée une annonce, modifie celles qui sont en ligne ou sponsorise-les (« À la une », « Urgent »).</p><div class="btns"><button data-a="go" data-id="recruter">＋ Publier une offre</button></div>`+
+  (S.mine.map(j=>`<div class="tip row"><span><b>${esc(j.title)}</b> ${j.active?'':'<span class="chip">Désactivée</span>'} ${isSp(j)?'<span class="chip v">Sponsorisée</span>':''}</span><span class="btns" style="margin:0"><button class="ghost" data-a="wkPlusEdit" data-id="${j.id}">Modifier</button><button class="ghost" data-a="wkPlusSponsor" data-id="${j.id}">🚀 Sponsoriser</button></span></div>`).join('')||'<p class="meta">Aucune offre publiée.</p>');
+ if(k==='apps'){const c=s=>L.filter(r=>r.status===s).length;
+  return `<div class="chips">${ST.map(s=>`<span class="chip">${s} : <b>${c(s)}</b></span>`).join('')}</div><p class="meta">${L.length} candidature(s) au total. Utilise le tableau par étapes pour trier, présélectionner et écrire aux candidats.</p><div class="btns"><button data-a="go" data-id="recus">Ouvrir les candidatures reçues</button><button class="ghost" data-a="go" data-id="comparateur">Comparer</button></div>`}
+ if(k==='search')return `<div class="grid"><div><label>Métier</label><input id="wsM" placeholder="Ex. comptable"></div><div><label>Compétences (virgules)</label><input id="wsS" placeholder="Excel, SQL"></div><div><label>Expérience minimale (ans)</label><input id="wsY" type="number" min="0" value="0"></div><div><label>Pays</label><input id="wsP" placeholder="Ex. Côte d’Ivoire"></div></div><div class="btns"><button data-a="wkPlusSearch">Rechercher</button></div><p class="meta">La recherche porte sur les candidats qui ont postulé à tes offres.</p><div id="wkPlusRes"></div>`;
+ if(k==='match')return S.mine.length?`<p class="meta">Choisis une offre : les candidatures sont classées selon le poste, le niveau et les compétences. C’est une aide à la décision, jamais une sélection automatique (ni nom, ni photo, ni âge, ni origine).</p><label>Offre</label>${jobSel('wmJ')}<div class="btns"><button data-a="wkPlusMatch">Lancer le Match AI</button></div><div id="wkPlusRes"></div>`:'<p class="meta">Publie d’abord une offre.</p>';
+ if(k==='pool')return `<p><b>${S.pool.length}</b> profil(s) dans ton vivier.</p><p class="meta">Seuls les candidats ayant autorisé les entreprises peuvent y être ajoutés. ${BIZ()?'':'Le vivier est inclus dans les offres Business et Pro.'}</p><div class="btns"><button data-a="go" data-id="talents">Ouvrir le vivier de talents</button></div>`;
+ if(k==='stats'){
+  const tot=L.length,iv=L.filter(r=>['Entretien programmé','Accepté'].includes(r.status)).length,ac=L.filter(r=>r.status==='Accepté').length;
+  const rows=S.mine.map(j=>{const rs=L.filter(r=>r.job_id===j.id),n=rs.length,i2=rs.filter(r=>['Entretien programmé','Accepté'].includes(r.status)).length;
+   return `<tr><td>${esc(j.title)}</td><td>${n}</td><td>${rs.filter(r=>r.status==='Présélectionné').length}</td><td>${i2}</td><td>${rs.filter(r=>r.status==='Accepté').length}</td><td>${rs.filter(r=>r.status==='Refusé').length}</td><td>${n?Math.round(i2/n*100)+' %':'—'}</td></tr>`}).join('');
+  return `<div class="wk-kpi-grid"><article class="wk-kpi"><span>Offres actives</span><strong>${S.mine.filter(j=>j.active).length}</strong></article><article class="wk-kpi"><span>Candidatures</span><strong>${tot}</strong></article><article class="wk-kpi"><span>Entretiens</span><strong>${iv}</strong><small>${tot?Math.round(iv/tot*100):0} % des candidatures</small></article><article class="wk-kpi"><span>Recrutés</span><strong>${ac}</strong></article></div><div style="overflow:auto"><table class="wkpc-tbl"><thead><tr><th>Offre</th><th>Candidatures</th><th>Présélection</th><th>Entretiens</th><th>Acceptés</th><th>Refusés</th><th>Taux entretien</th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="meta">Aucune offre.</td></tr>'}</tbody></table></div>`}
+ if(k==='team'){const T2=load('team_'+S.uid,[]);
+  return `<p class="meta">Prépare l’équipe RH qui collaborera sur tes recrutements. Les invitations par e-mail et les droits d’accès partagés nécessitent la connexion au serveur : pour l’instant, la liste est enregistrée sur cet appareil.</p><div class="grid"><div><label>Nom</label><input id="wtN"></div><div><label>E-mail</label><input id="wtE" type="email"></div><div><label>Rôle</label><select id="wtR"><option>Recruteur</option><option>Manager RH</option><option>Lecteur</option></select></div></div><div class="btns"><button data-a="wkPlusTeamAdd">Ajouter</button></div>`+
+  (T2.map((m,i)=>`<div class="tip row"><span><b>${esc(m.n)}</b> · ${esc(m.e)} <span class="chip">${esc(m.r)}</span></span><button class="lnk" data-a="wkPlusTeamDel" data-id="${i}">Retirer</button></span></div>`).join('')||'<p class="meta">Aucun membre ajouté.</p>')}
+ if(k==='vis')return `<p>Mets tes offres en avant : <b>À la une</b> (10 / 18 / 30 crédits pour 7 / 15 / 30 jours) ou <b>Urgent</b> (5 / 9 / 15 crédits). Tes crédits : <b>${S.user.credits||0}</b>.</p><div class="btns"><button class="ghost" data-a="go" data-id="tarifs">Acheter des crédits</button></div>`+
+  (S.mine.map(j=>`<div class="tip row"><span><b>${esc(j.title)}</b> ${j.featured_until&&new Date(j.featured_until)>new Date()?`<span class="chip v">⭐ À la une jusqu’au ${fdt(j.featured_until)}</span>`:''} ${j.urgent_until&&new Date(j.urgent_until)>new Date()?`<span class="chip warn">🔥 Urgent jusqu’au ${fdt(j.urgent_until)}</span>`:''}</span><button data-a="wkPlusSponsor" data-id="${j.id}">🚀 Sponsoriser</button></div>`).join('')||'<p class="meta">Aucune offre.</p>');
+ if(k==='import')return `<p class="meta">Colle tes annonces (une par ligne) ou charge un fichier .csv / .txt / .json. Format : <b>Titre;Ville;Pays;Contrat;Description;Compétences</b> (compétences séparées par « | »). Titre et pays obligatoires, 20 offres maximum par import.</p><input type="file" id="wkImpF" accept=".csv,.txt,.tsv,.json"><textarea id="wkImpTxt" style="min-height:180px;margin-top:10px" placeholder="Développeur web;Abidjan;Côte d’Ivoire;CDI;Missions…;HTML|CSS"></textarea><div class="btns"><button data-a="wkPlusImport">Importer les offres</button></div><p class="meta">Les offres importées sont publiées comme les autres et respectent les limites de ton abonnement.</p>`;
+ if(k==='guar'){
+  const sj=S.mine.filter(isSp);
+  return `<p class="meta">Si une offre sponsorisée reçoit moins de <b>10 candidatures ciblées</b> (compatibilité ≥ 60 %), tu peux demander sa prolongation. La demande est validée par l’équipe WORKLY.</p>`+
+  (sj.map(j=>{const rs=L.filter(r=>r.job_id===j.id),t=rs.filter(r=>(analyseCand(r.cand||{},j).sc||0)>=60).length,ok=t>=10;
+   return `<div class="tip"><b>${esc(j.title)}</b><div class="wkplus-progress" style="height:9px;border-radius:20px;background:var(--line);overflow:hidden;margin:6px 0"><span style="display:block;height:100%;width:${Math.min(100,t*10)}%;background:var(--brand)"></span></div><span class="meta">${t}/10 candidature(s) ciblée(s) · ${rs.length} au total</span><div class="btns">${ok?'<span class="chip v">✔ Objectif atteint</span>':`<button data-a="wkPlusGuar" data-id="${j.id}">Demander la prolongation</button>`}</div></div>`}).join('')||'<p class="meta">Aucune offre sponsorisée en cours. Sponsorise une offre pour activer la garantie.</p><div class="btns"><button data-a="wkPlusOpen" data-id="vis">Sponsoriser une offre</button></div>');
+ }
+ return '';
+}
+function vPlusCo(){
+ const mod=PLUS.find(x=>x[0]===PK2);
+ q('#view').innerHTML=`<span class="wk-eyebrow">ESPACE ENTREPRISE</span><h1>WORKLY+</h1><p class="sub">Les outils avancés de recrutement, réunis au même endroit.</p>`+
+ (mod?`<p><button class="lnk" data-a="wkPlusOpen" data-id="home">← Tous les modules</button></p><div class="card"><h2>${mod[1]} ${mod[2]}</h2><p class="meta">${mod[3]}</p>${panel(mod[0])}</div>`:
+ `<div class="wkpc-grid">${PLUS.map(x=>`<button class="wkpc-card" data-a="wkPlusOpen" data-id="${x[0]}"><div class="wkpc-ic">${x[1]}</div><h2>${x[2]}</h2><p>${x[3]}</p><span class="chip" style="margin-top:auto;align-self:flex-start">Ouvrir →</span></button>`).join('')}</div>`);
+ const f=q('#wkImpF');if(f)f.onchange=()=>{const r=new FileReader();r.onload=()=>{q('#wkImpTxt').value=r.result};if(f.files[0])r.readAsText(f.files[0])};
+ window.scrollTo(0,0);
+}
+const _vp=window.__wkVPlus;
+window.__wkVPlus=function(){if(role()==='entreprise')return vPlusCo();return _vp&&_vp()};
+
+A.wkPlusOpen=k=>{PK2=k;vPlusCo()};
+A.wkPlusEdit=id=>{S.editId=+id;S.dupe=null;go('recruter')};
+A.wkPlusSponsor=id=>{S.sp=+id;go('recruter')};
+A.wkPlusSearch=()=>{
+ const m=(q('#wsM').value||'').toLowerCase().trim(),sk2=(q('#wsS').value||'').toLowerCase().split(',').map(x=>x.trim()).filter(Boolean),y=+q('#wsY').value||0,p=(q('#wsP').value||'').toLowerCase().trim();
+ const res=S.recv.map(r=>({r,c:r.cand||{}})).filter(({c})=>{
+  const t=((c.poste||'')+' '+(c.cv||'')+' '+(c.skills||'')).toLowerCase();
+  return(!m||t.includes(m))&&sk2.every(s=>t.includes(s))&&(!y||yrsOf(t)>=y)&&(!p||(c.pays||'').toLowerCase().includes(p));
+ });
+ q('#wkPlusRes').innerHTML=`<p class="meta">${res.length} résultat(s)</p>`+res.map(({r,c})=>{const j=S.mine.find(x=>x.id===r.job_id);return `<div class="tip row"><span><b>${esc(c.nom||'Candidat')}</b> · ${esc(c.poste||'')} · ${esc(c.pays||'')}<br><span class="meta">${esc(c.skills||'')} · pour « ${esc(j?j.title:'')} » · <span class="chip">${esc(r.status)}</span></span></span><button class="ghost" data-a="thread" data-id="${r.id}">Écrire</button></div>`}).join('');
+};
+A.wkPlusMatch=()=>{
+ const j=S.mine.find(x=>String(x.id)===q('#wmJ').value);if(!j)return;
+ const rs=S.recv.filter(r=>r.job_id===j.id).map(r=>({r,a:analyseCand(r.cand||{},j)})).sort((a,b)=>(b.a.sc??-1)-(a.a.sc??-1));
+ q('#wkPlusRes').innerHTML=rs.map(({r,a},i)=>`<div class="tip"><div class="row"><b>${i+1}. ${esc((r.cand&&r.cand.nom)||'Candidat')}</b><span class="wkpc-sc">${a.sc===null?'N/D':a.sc+' %'}</span></div><div class="chips">${a.found.map(g=>`<span class="chip v">✔ ${esc(g)}</span>`).join('')}${a.miss.map(g=>`<span class="chip">✗ ${esc(g)}</span>`).join('')}</div>${a.flags.length?`<p class="meta warn" style="margin:4px 0">À vérifier : ${a.flags.map(esc).join(', ')}</p>`:''}<div class="btns" style="margin-top:6px"><button class="ghost" data-a="setst" data-id="${r.id}|Présélectionné">⭐ Présélectionner</button><button class="ghost" data-a="thread" data-id="${r.id}">Écrire</button></div></div>`).join('')||'<p class="meta">Aucune candidature pour cette offre.</p>';
+};
+A.wkPlusTeamAdd=()=>{
+ const n=q('#wtN').value.trim(),e=q('#wtE').value.trim();
+ if(!n||!/\S+@\S+\.\S+/.test(e)){toast('Renseigne un nom et un e-mail valide');return}
+ const t=load('team_'+S.uid,[]);t.push({n,e,r:q('#wtR').value});save('team_'+S.uid,t);vPlusCo();
+};
+A.wkPlusTeamDel=i=>{const t=load('team_'+S.uid,[]);t.splice(+i,1);save('team_'+S.uid,t);vPlusCo()};
+A.wkPlusImport=async()=>{
+ if(!S.user.verified){toast('Ton entreprise doit être vérifiée pour publier des offres');return}
+ const txt=(q('#wkImpTxt').value||'').trim();if(!txt){toast('Colle ou charge des offres');return}
+ let rows=[];
+ try{
+  if(txt[0]==='['){rows=JSON.parse(txt).map(o=>({title:o.title||o.titre,city:o.city||o.ville,country:o.country||o.pays,contract:o.contract||o.contrat,description:o.description,tags:o.tags||o.competences}))}
+  else txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).forEach((l,i)=>{
+   const d=l.includes(';')?';':l.includes('\t')?'\t':',',p=l.split(d).map(x=>x.trim());
+   if(i===0&&/^(titre|title|poste)$/i.test(p[0]))return;
+   rows.push({title:p[0],city:p[1],country:p[2],contract:p[3],description:p[4],tags:p[5]});
+  });
+ }catch(e){toast('Format illisible : '+e.message);return}
+ rows=rows.filter(r=>r.title&&r.country).slice(0,20);
+ if(!rows.length){toast('Aucune ligne valide (titre et pays obligatoires)');return}
+ if(!confirm('Importer et publier '+rows.length+' offre(s) ?'))return;
+ const out=rows.map(r=>({owner:S.uid,company:S.user.company,logo_url:S.user.avatar_url||null,title:String(r.title).slice(0,120),country:String(r.country),city:r.city||'—',level:0,field:'Autre',contract:CT.includes(r.contract)?r.contract:'CDI',salary:'',deadline:null,description:String(r.description||'').slice(0,5000),remote:false,tags:Array.isArray(r.tags)?r.tags:String(r.tags||'').split(/[|,]/).map(x=>x.trim()).filter(Boolean)}));
+ const r=await SB.from('jobs').insert(out);
+ if(r.error){toast('Import impossible : '+r.error.message);return}
+ await loadAll();toast(out.length+' offre(s) importée(s)');PK2='offers';vPlusCo();
+};
+A.wkPlusGuar=id=>{
+ const j=S.mine.find(x=>x.id==id);if(!j)return;
+ location.href='mailto:'+B.mail+'?subject='+encodeURIComponent('Garantie Satisfait ou Prolongé — '+j.title)+'&body='+encodeURIComponent('Bonjour, je demande la prolongation de mon annonce sponsorisée « '+j.title+' » (réf. '+j.id+'), qui a reçu moins de 10 candidatures ciblées.\nEntreprise : '+(S.user.company||'')+'\nE-mail du compte : '+(S.user.email||''));
+};
+
+setTimeout(()=>{try{drawNav();tick()}catch(e){}},0);
+}catch(e){console.error('Correctifs v16 :',e)}})();
+</script>
 </body>
 </html>
