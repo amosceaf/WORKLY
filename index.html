@@ -1939,5 +1939,63 @@ A.wkPlusGuar=id=>{
 setTimeout(()=>{try{drawNav();tick()}catch(e){}},0);
 }catch(e){console.error('Correctifs v16 :',e)}})();
 </script>
+<script id="wk-password-security">
+(function(){
+ 'use strict';
+ const COMMON=['password','motdepasse','azerty','qwerty','azertyuiop','qwertyuiop','123456','1234567','12345678','123456789','1234567890','000000','11111111','password1','password123','motdepasse1','motdepasse123','admin123','welcome1','iloveyou','abc12345','azerty123','qwerty123','workly','workly123','worklyevolia','abidjan','cotedivoire','azertyui','1q2w3e4r','letmein','monmotdepasse'];
+ function weak(p,email){
+  if(typeof p!=='string'||p.length<8)return 'Utilise au moins 8 caractères.';
+  const low=p.toLowerCase().replace(/\s/g,'');
+  if(COMMON.includes(low))return 'Ce mot de passe est trop courant : choisis-en un plus difficile à deviner.';
+  if(/^(.)\1+$/.test(low))return 'Évite de répéter le même caractère.';
+  const seq='0123456789abcdefghijklmnopqrstuvwxyz';
+  if(low.length<=14&&(seq.includes(low)||seq.split('').reverse().join('').includes(low)))return 'Évite les suites de caractères comme 12345678 ou abcdefgh.';
+  const loc=String(email||'').split('@')[0].toLowerCase();
+  if(loc.length>=4&&low.includes(loc))return 'Ton mot de passe ne doit pas contenir ton adresse e-mail.';
+  if(new Set(low).size<4)return 'Utilise des caractères plus variés.';
+  return null;
+ }
+ window.wkWeakPassword=weak;
+ const KEY='wk_login_attempts';
+ const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){return{}}};
+ const write=v=>{try{localStorage.setItem(KEY,JSON.stringify(v))}catch(e){}};
+ const id=e=>String(e||'').trim().toLowerCase();
+ function lockLeft(email){const a=read()[id(email)];return a&&a.until&&a.until>Date.now()?Math.ceil((a.until-Date.now())/60000):0}
+ function fail(email){const all=read(),k=id(email),a=all[k]||{n:0,until:0};
+  if(a.until&&a.until<Date.now()){a.n=0;a.until=0}
+  a.n++;
+  if(a.n>=5){const level=Math.min(a.n-5,4);a.until=Date.now()+[1,5,15,30,60][level]*60000}
+  all[k]=a;write(all)}
+ function ok(email){const all=read();delete all[id(email)];write(all)}
+ function patch(){
+  if(!window.SB||!SB.auth||SB.auth.__wkSecured)return false;
+  const signIn=SB.auth.signInWithPassword.bind(SB.auth),
+        signUp=SB.auth.signUp.bind(SB.auth),
+        update=SB.auth.updateUser.bind(SB.auth);
+  SB.auth.signInWithPassword=async function(c){
+   const m=lockLeft(c&&c.email);
+   if(m)return{data:{user:null,session:null},error:{message:'Trop de tentatives. Réessaie dans '+m+' minute(s).'}};
+   const r=await signIn(c);
+   if(r&&r.error&&/Invalid login/i.test(r.error.message))fail(c&&c.email);
+   else if(r&&!r.error)ok(c&&c.email);
+   return r;
+  };
+  SB.auth.signUp=async function(c){
+   const w=weak(c&&c.password,c&&c.email);
+   if(w)return{data:{user:null,session:null},error:{message:w}};
+   return signUp(c);
+  };
+  SB.auth.updateUser=async function(a){
+   if(a&&typeof a.password==='string'){
+    const w=weak(a.password,S&&S.user&&S.user.email);
+    if(w)return{data:{user:null},error:{message:w}};
+   }
+   return update(a);
+  };
+  SB.auth.__wkSecured=true;return true;
+ }
+ if(!patch()){let n=0;const t=setInterval(()=>{if(patch()||++n>50)clearInterval(t)},200)}
+})();
+</script>
 </body>
 </html>
