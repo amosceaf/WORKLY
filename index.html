@@ -76,6 +76,20 @@
 #wk-search-results{position:absolute;top:calc(100% + 7px);left:0;right:0;width:100%;max-width:none;z-index:120}
 @media(max-width:700px){.wrap>header{flex-wrap:wrap;gap:8px}.wrap>header>.logo{order:1}.wrap>header>span:last-child{order:2;margin-left:auto}#wk-searchbar{order:3;flex:1 0 100%;max-width:none;margin:4px 0 2px}.wrap>header{padding-bottom:10px!important}}
 </style> 
+<style id="wk-mobile-search-fix">
+/* Correctif mobile : champ de recherche tactile et clavier virtuel */
+#wk-searchbar,.wk-search-wrap,#wk-search-input{pointer-events:auto!important;touch-action:manipulation!important}
+#wk-searchbar{isolation:isolate;z-index:305!important}
+.wk-hdr-row2 #wk-searchbar{position:relative!important;min-width:0!important}
+.wk-search-wrap{min-height:48px!important}
+.wk-search-wrap input#wk-search-input{display:block!important;flex:1 1 auto!important;width:100%!important;min-width:0!important;min-height:42px!important;height:42px!important;font-size:16px!important;line-height:1.3!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important;-webkit-appearance:none!important;appearance:none!important;user-select:text!important;-webkit-user-select:text!important}
+@media(max-width:850px){
+ .wrap>header.wk-hdr{position:sticky!important;z-index:700!important}
+ .wk-hdr-row2{position:relative!important;z-index:701!important}
+ .wk-hdr-row2 #wk-searchbar{flex:1 1 0!important;width:auto!important;max-width:none!important}
+ .wk-search-wrap input#wk-search-input{padding:10px 6px!important}
+}
+</style>
 <style id="wk-feed-professional">
 .wk-feed-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.wk-feed-pill,.wk-live-kicker{font-size:11px;font-weight:800;letter-spacing:.09em;color:var(--brand)}
 .wk-feed-upload-label{display:block;margin:10px 0 5px;font-weight:700}.wk-feed-card{padding:18px!important;border:1px solid var(--line);box-shadow:0 8px 28px rgba(20,35,75,.06);margin:14px 0}.wk-feed-head{display:flex;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--line)}.wk-feed-avatar{width:48px;height:48px;min-width:48px;border-radius:50%;object-fit:cover;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line)}.wk-feed-role{font-size:11px;font-weight:700;padding:5px 9px;border-radius:20px;background:var(--soft);color:var(--brand)}.wk-feed-body{white-space:pre-wrap;line-height:1.65;margin:14px 0;font-size:15px}.wk-feed-media{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:9px;margin-top:12px}.wk-feed-media img{width:100%;max-height:340px;object-fit:cover;border-radius:13px;display:block}.wk-feed-video{width:100%;max-height:480px;border-radius:14px;background:#101828;display:block;margin-top:10px;object-fit:contain}.wk-community-social{border-top:1px solid var(--line);margin-top:14px;padding-top:10px}.wk-social-summary{font-size:12px;color:var(--muted);padding:2px 0 8px}.wk-social-actions{display:flex;gap:8px;flex-wrap:wrap}.wk-social-actions button{border-radius:9px}.wk-social-actions .wk-liked{color:var(--brand);font-weight:800;background:var(--soft)}.wk-comment{padding:9px 11px;margin:8px 0;background:var(--bg);border:1px solid var(--line);border-radius:12px}.wk-comment p{margin:5px 0;white-space:pre-wrap}.wk-comment-form{display:flex;gap:8px;margin-top:10px}.wk-comment-form input{flex:1;min-width:0}.wk-live-card{display:flex;gap:16px;align-items:center;margin:14px 0 18px;padding:18px!important;background:linear-gradient(135deg,var(--surface),var(--soft));border:1px solid var(--line)}.wk-live-icon{font-size:32px}.wk-live-copy{flex:1;min-width:0}.wk-live-copy h2{margin:4px 0}.wk-live-copy p{margin:5px 0 12px;color:var(--muted)}.wk-live-studio{max-width:760px;margin:20px auto;padding:24px!important}.wk-live-studio label{display:block;margin:12px 0 5px;font-weight:700}
@@ -326,7 +340,7 @@ ${d.name||"[Votre nom]"}`;$("#cvx_letter").value=letter;save(CVKEY()+"_letter",l
   const installSearch=()=>{
     const header=document.querySelector("header");
     if(header&&!document.getElementById("wk-searchbar")){
-      header.querySelector('.logo')?.insertAdjacentHTML("afterend",`<div id="wk-searchbar"><div class="wk-search-wrap"><span aria-hidden="true" style="font-size:20px;color:var(--muted)">⌕</span><input id="wk-search-input" type="search" placeholder="Rechercher une entreprise ou un candidat…" autocomplete="off" aria-label="Rechercher une entreprise ou un candidat"><button id="wk-search-submit" type="button" aria-label="Lancer la recherche">Rechercher</button></div><div id="wk-search-results" class="wk-search-results"></div></div>`);
+      header.querySelector('.logo')?.insertAdjacentHTML("afterend",`<div id="wk-searchbar"><div class="wk-search-wrap"><span aria-hidden="true" style="font-size:20px;color:var(--muted)">⌕</span><input id="wk-search-input" type="search" inputmode="search" enterkeyhint="search" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Rechercher une entreprise ou un candidat…" aria-label="Rechercher une entreprise ou un candidat"><button id="wk-search-submit" type="button" aria-label="Lancer la recherche">Rechercher</button></div><div id="wk-search-results" class="wk-search-results"></div></div>`);
       const input=document.getElementById("wk-search-input"),results=document.getElementById("wk-search-results");
       let timer=null,last="";
       const run=async()=>{
