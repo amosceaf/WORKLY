@@ -858,7 +858,6 @@ try {
   const languages=[['fr','Français'],['en','English'],['es','Español'],['pt','Português'],['ar','العربية'],['de','Deutsch'],['it','Italiano'],['nl','Nederlands'],['ru','Русский'],['zh','中文'],['ja','日本語'],['ko','한국어'],['hi','हिन्दी'],['sw','Kiswahili'],['tr','Türkçe'],['pl','Polski'],['uk','Українська'],['id','Bahasa Indonesia'],['th','ไทย'],['vi','Tiếng Việt'],['bn','বাংলা'],['ha','Hausa'],['yo','Yorùbá'],['am','አማርኛ'],['ro','Română']];
   const featureDefs=[
    ['pass','🪪','Candidate Pass 2.0','Une carte professionnelle partageable avec photo, compétences et parcours.'],
-   ['match','🎯','WORKLY Match AI','Analyse de compatibilité entre profil et offres.'],
    ['reputation','🏅','WORKLY Reputation','Portfolio de compétences, certifications et recommandations.'],
    ['interview','🎥','WORKLY Interview','Préparation et suivi des entretiens côté candidat.'],
    ['global','🌍','WORKLY Global','Préférences internationales, pays ciblés, mobilité et langues.'],
@@ -871,7 +870,7 @@ try {
   ];
   const wkRoleFeatures=()=>role()==='entreprise'
     ?featureDefs.filter(x=>['recruiter','analytics','meetings','security','notifications'].includes(x[0]))
-    :featureDefs.filter(x=>['pass','match','reputation','interview','global','academy','security','notifications'].includes(x[0]));
+    :featureDefs.filter(x=>['pass','reputation','interview','global','academy','security','notifications'].includes(x[0]));
   const wkFeatureAllowed=k=>wkRoleFeatures().some(x=>x[0]===k);
   let wkActive='home';
   const wkField=(id,label,placeholder='',value='')=>`<label>${label}</label><input id="${id}" placeholder="${placeholder}" value="${esc(value)}">`;
@@ -1510,6 +1509,16 @@ try {
 .wk-dock-more.open .wk-dock-menu{display:grid;gap:3px}
 .wk-dock-menu button{text-align:left;background:transparent;color:var(--text);padding:10px 12px;border-radius:9px}
 .wk-dock-menu button:hover{background:var(--bg)}
+/* WORKLY UI corrections requested */
+.wk-candidate-offers{display:none!important}
+.wk-dock-more{margin-left:auto!important}
+.wk-dock-menu{position:fixed!important;top:0!important;left:0!important;right:auto!important;bottom:0!important;width:min(84vw,340px)!important;min-width:0!important;max-height:100vh!important;max-height:100dvh!important;overflow-y:auto!important;overscroll-behavior:contain!important;box-sizing:border-box!important;padding:14px 12px calc(20px + env(safe-area-inset-bottom))!important;border-radius:0 18px 18px 0!important;z-index:10000!important;align-content:start!important}
+.wk-dock-more.open .wk-dock-menu{display:grid!important;gap:5px!important}
+.wk-drawer-head{position:sticky;top:-14px;display:flex;align-items:center;justify-content:space-between;padding:12px 8px 16px;background:var(--surface);border-bottom:1px solid var(--line);z-index:2;margin-bottom:6px}
+.wk-drawer-head strong{font-size:18px;color:var(--text)}
+.wk-drawer-close{width:38px;height:38px;border-radius:50%;font-size:25px;line-height:1;background:var(--soft);color:var(--text);border:0}
+.wk-dock-menu .wk-drawer-item{width:100%;min-height:48px;text-align:left;background:transparent;color:var(--text);padding:12px 14px;border:0;border-radius:10px;font-size:15px}
+.wk-dock-menu .wk-drawer-item:hover{background:var(--bg)}
 body{padding-bottom:84px}
 #toast{bottom:calc(86px + env(safe-area-inset-bottom))!important}
 @media(min-width:851px){.wrap>nav#nav{height:calc(100vh - 170px)!important;max-height:calc(100vh - 170px)!important}}
@@ -1530,7 +1539,7 @@ body{padding-bottom:84px}
 <script id="wk-final-script">
 try{
 /* ===== 1. En-tête propre + barre du bas ===== */
-const wkMenuItems=()=>!S.user?[['connexion','Connexion'],['inscription','Créer un compte'],['tarifs','Tarifs']]:[['compte',role()==='entreprise'?'Profil entreprise':'Mon profil'],['tarifs','Abonnement'],['notifications','Notifications'],['parametres','Paramètres']];
+const wkMenuItems=()=>!S.user?[['connexion','Connexion'],['inscription','Créer un compte'],['tarifs','Tarifs']]:[['compte',role()==='entreprise'?'Profil entreprise':'Mon profil'],['tarifs','Abonnement'],['notifications','Notifications'],...(role()==='candidat'?[['wkOpenReferral','Parrainage']]:[]),['parametres','Paramètres']];
 function wkBuildChrome(){
  const old=document.querySelector('.wrap>header');if(!old||old.classList.contains('wk-hdr'))return;
  const hd=document.createElement('header');hd.className='wk-hdr';
@@ -1545,14 +1554,15 @@ function wkBuildChrome(){
  if(sb){const bt=sb.querySelector('#wk-search-submit');if(bt)bt.textContent='→'}
  const dock=document.createElement('div');dock.id='wk-dock';
  const more=document.createElement('div');more.className='wk-dock-more';
- more.innerHTML='<div class="wk-dock-menu"></div><button type="button" aria-label="Plus d’options" aria-expanded="false">⋯</button>';
- const mb=more.querySelector('button'),mm=more.querySelector('.wk-dock-menu');
- mb.addEventListener('click',()=>{mm.innerHTML=wkMenuItems().map(x=>`<button type="button" data-a="go" data-id="${x[0]}">${x[1]}</button>`).join('');const o=more.classList.toggle('open');mb.setAttribute('aria-expanded',String(o))});
+ more.innerHTML='<div class="wk-dock-menu" aria-label="Menu principal"><div class="wk-drawer-head"><strong>Menu WORKLY</strong><button type="button" class="wk-drawer-close" aria-label="Fermer le menu">×</button></div></div><button type="button" aria-label="Plus d’options" aria-expanded="false">⋯</button>';
+ const mb=more.querySelector(':scope > button'),mm=more.querySelector('.wk-dock-menu');
+ const fillMenu=()=>{mm.querySelectorAll('.wk-drawer-item').forEach(x=>x.remove());wkMenuItems().forEach(x=>{const b=document.createElement('button');b.type='button';b.className='wk-drawer-item';b.dataset.a=x[0]==='wkOpenReferral'?'wkOpenReferral':'go';if(x[0]!=='wkOpenReferral')b.dataset.id=x[0];b.textContent=x[1];mm.appendChild(b)})};fillMenu();mb.addEventListener('click',()=>{const o=more.classList.toggle('open');mb.setAttribute('aria-expanded',String(o))});mm.querySelector('.wk-drawer-close').addEventListener('click',()=>{more.classList.remove('open');mb.setAttribute('aria-expanded','false')});
  document.addEventListener('click',e=>{if(!more.contains(e.target)||e.target.closest('.wk-dock-menu button')){more.classList.remove('open');mb.setAttribute('aria-expanded','false')}});
  if(sb)dock.appendChild(sb);dock.appendChild(more);
  old.replaceWith(hd);document.body.appendChild(dock);
  document.getElementById('wk-bottom-more')?.remove();
 }
+A.wkOpenReferral=()=>{go('parametres');setTimeout(()=>{const d=[...document.querySelectorAll('#view details.wk-settings-entry')].find(x=>(x.querySelector('summary')?.textContent||'').includes('Parrainage WORKLY'));if(d){d.open=true;d.scrollIntoView({behavior:'smooth',block:'center'})}else toast('La rubrique Parrainage est disponible dans Paramètres du profil candidat.');},450)};
 function wkPaintHdr(){
  wkBuildChrome();
  const id=document.getElementById('wkHdrId');if(!id)return;const u=S.user;
@@ -1837,7 +1847,7 @@ const PLUS=[
 ['offers','📝','Publication d’offres','Création, modification et sponsorisation des annonces.'],
 ['apps','📋','Gestion des candidatures','Suivi, tri et classement des candidats.'],
 ['search','🔎','Recherche avancée','Filtres par métier, compétences, expérience et pays.'],
-['match','🎯','WORKLY Match AI','Mise en correspondance intelligente des candidats et des offres.'],
+['interview','🎥','WORKLY Interview','Préparation et conduite des entretiens avec les candidats.'],
 ['pool','⭐','Talent Pool','Constitution d’une base de talents.'],
 ['stats','📊','Statistiques avancées','Performances des annonces et analyses de recrutement.'],
 ['team','👥','Gestion d’équipe RH','Collaboration entre plusieurs recruteurs.'],
@@ -1857,7 +1867,7 @@ function panel(k){
  if(k==='apps'){const c=s=>L.filter(r=>r.status===s).length;
   return `<div class="chips">${ST.map(s=>`<span class="chip">${s} : <b>${c(s)}</b></span>`).join('')}</div><p class="meta">${L.length} candidature(s) au total. Utilise le tableau par étapes pour trier, présélectionner et écrire aux candidats.</p><div class="btns"><button data-a="go" data-id="recus">Ouvrir les candidatures reçues</button><button class="ghost" data-a="go" data-id="comparateur">Comparer</button></div>`}
  if(k==='search')return `<div class="grid"><div><label>Métier</label><input id="wsM" placeholder="Ex. comptable"></div><div><label>Compétences (virgules)</label><input id="wsS" placeholder="Excel, SQL"></div><div><label>Expérience minimale (ans)</label><input id="wsY" type="number" min="0" value="0"></div><div><label>Pays</label><input id="wsP" placeholder="Ex. Côte d’Ivoire"></div></div><div class="btns"><button data-a="wkPlusSearch">Rechercher</button></div><p class="meta">La recherche porte sur les candidats qui ont postulé à tes offres.</p><div id="wkPlusRes"></div>`;
- if(k==='match')return S.mine.length?`<p class="meta">Choisis une offre : les candidatures sont classées selon le poste, le niveau et les compétences. C’est une aide à la décision, jamais une sélection automatique (ni nom, ni photo, ni âge, ni origine).</p><label>Offre</label>${jobSel('wmJ')}<div class="btns"><button data-a="wkPlusMatch">Lancer le Match AI</button></div><div id="wkPlusRes"></div>`:'<p class="meta">Publie d’abord une offre.</p>';
+ if(k==='interview')return `<h2>WORKLY Interview</h2><p class="meta">Organise un entretien vidéo avec un candidat et partage le lien de la salle.</p><label>Nom de la salle / référence de l’entretien</label><input id="wkMeetRoom" placeholder="Ex. entretien-candidat-2026"><div class="btns"><button data-a="wkmeetcreate">Créer et ouvrir la salle</button><button class="ghost" data-a="wkmeetcopy">Copier le lien</button></div><label style="margin-top:12px">Rejoindre une salle</label><input id="wkMeetJoinRoom" placeholder="Nom exact de la salle"><button class="ghost" data-a="wkmeetjoinbyname">Rejoindre l’entretien</button><div id="wkMeetLink" class="meta" style="overflow-wrap:anywhere;margin-top:10px"></div><div id="wkMeetJoinInfo" class="meta" style="margin-top:8px"></div><p class="meta">La visioconférence s’ouvre dans Jitsi Meet. Partage le lien uniquement avec les participants concernés.</p>`;
  if(k==='pool')return `<p><b>${S.pool.length}</b> profil(s) dans ton vivier.</p><p class="meta">Seuls les candidats ayant autorisé les entreprises peuvent y être ajoutés. ${BIZ()?'':'Le vivier est inclus dans les offres Business et Pro.'}</p><div class="btns"><button data-a="go" data-id="talents">Ouvrir le vivier de talents</button></div>`;
  if(k==='stats'){
   const tot=L.length,iv=L.filter(r=>['Entretien programmé','Accepté'].includes(r.status)).length,ac=L.filter(r=>r.status==='Accepté').length;
@@ -2107,7 +2117,7 @@ setTimeout(()=>{try{drawNav();tick()}catch(e){}},0);
  /* Suivi du statut : En attente / Paiement réussi / Paiement échoué */
  async function refreshUser(){try{await loadAll();render()}catch(e){}}
  function showStatus(tx){
-  shell('<h2>Vérification du paiement</h2><div class="wk-pay-state" id="wkPayState"><i></i><span>En attente de confirmation…</span></div><p class="meta" id="wkPayMsg">Nous interrogeons SasPay. Ne ferme pas cette fenêtre.</p><div class="btns" id="wkPayBtns"></div>',true);
+  shell('<h2>Vérification du paiement</h2><div class="wk-pay-state" id="wkPayState"><i></i><span>En attente de confirmation…</span></div><p class="meta" id="wkPayMsg">Nous interrogeons SasPay. Tu peux fermer cette fenêtre à tout moment.</p><div class="btns" id="wkPayBtns"><button class="ghost" data-a="wkPayClose">Fermer</button></div>',true);
   let tries=0;
   const set=(cls,title,msg,btns)=>{const s=q('#wkPayState');if(!s)return;s.className='wk-pay-state '+cls;s.querySelector('span').textContent=title;q('#wkPayMsg').textContent=msg;q('#wkPayBtns').innerHTML=btns||''};
   const step=async()=>{
@@ -2121,8 +2131,8 @@ setTimeout(()=>{try{drawNav();tick()}catch(e){}},0);
    }
    if(s==='SUCCESS'&&d.needs_review){set('','Paiement reçu — contrôle en cours','Ton paiement est bien arrivé mais doit être contrôlé par WORKLY avant activation. Écris-nous à '+B.mail+' en indiquant la référence '+tx+'.',`<button class="ghost" data-a="wkPayClose">Fermer</button>`);return}
    if(s==='FAILED'||s==='CANCELLED'){set('ko','Paiement échoué','Le paiement n’a pas abouti. Aucun montant n’est activé. Tu peux réessayer.',`<button data-a="wkPayAgain">Réessayer</button><button class="ghost" data-a="wkPayClose">Fermer</button>`);return}
-   if(++tries<15){setTimeout(step,4000);return}
-   set('','Toujours en attente','La confirmation n’est pas encore arrivée. Si tu as bien payé, patiente quelques minutes puis vérifie à nouveau (menu Abonnement → Mes paiements).',`<button data-a="wkPayCheck" data-id="${tx}">Vérifier à nouveau</button><button class="ghost" data-a="wkPayClose">Fermer</button>`);
+   if(++tries<5){set('','En attente de confirmation','SasPay n’a pas encore confirmé le paiement. Tu peux fermer cette fenêtre ou vérifier à nouveau.',`<button data-a="wkPayCheck" data-id="${tx}">Vérifier à nouveau</button><button class="ghost" data-a="wkPayClose">Fermer</button>`);setTimeout(step,4000);return}
+   set('','Paiement non confirmé','Aucune confirmation n’a été reçue. Si ton solde était insuffisant ou si tu as annulé, aucun achat n’est activé. Tu peux fermer cette fenêtre et réessayer plus tard.',`<button data-a="wkPayCheck" data-id="${tx}">Vérifier à nouveau</button><button class="ghost" data-a="wkPayClose">Fermer</button>`);
   };
   step();
  }
