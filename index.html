@@ -2226,5 +2226,176 @@ setTimeout(()=>{try{drawNav();tick()}catch(e){}},0);
  }
 }catch(e){console.error('WORKLY mot de passe oublié :',e)}})();
 </script>
+<!-- ============================================================
+     WORKLY — BLOC C : correctifs
+     Ajouté après le BLOC B « wk-reset-fix ».
+     ============================================================ -->
+<style id="wk-blocC-style">
+/* Ancienne barre du bas supprimée : tout est maintenant en haut */
+#wk-dock,#wk-bottom-more{display:none!important}
+body{padding-bottom:0!important}
+#toast{bottom:calc(20px + env(safe-area-inset-bottom))!important}
+img,video{max-width:100%}
+/* En-tête : ligne 2 = ☰  ⋯  [barre de recherche] */
+.wrap>header.wk-hdr{z-index:300!important}
+body.wk-drawer-open .wrap>header.wk-hdr{z-index:40!important}
+.wk-hdr-row2{display:flex!important;align-items:center;gap:8px}
+.wk-hdr-row2>button{flex:0 0 auto;width:44px;height:44px;padding:0;font-size:22px;line-height:1;display:inline-flex!important;align-items:center;justify-content:center}
+.wk-hdr-row2 #wk-searchbar{flex:1 1 auto!important;min-width:0!important;max-width:680px!important;margin:0!important}
+.wk-hdr-right{gap:6px!important;flex-wrap:nowrap!important}
+/* Ordinateur : colonne de gauche sous l'en-tête, pleine hauteur, défilante */
+@media(min-width:851px){
+ .wrap>nav#nav{top:var(--wk-hdr-h,128px)!important;height:calc(100vh - var(--wk-hdr-h,128px) - 12px)!important;max-height:calc(100vh - var(--wk-hdr-h,128px) - 12px)!important;overflow-y:auto!important}
+}
+/* Téléphone : tiroir sur toute la hauteur, défilant */
+@media(max-width:850px){
+ .wrap>nav#nav{top:0!important;bottom:0!important;height:100vh!important;height:100dvh!important;max-height:none!important;width:min(86vw,340px)!important;z-index:800!important;margin:0!important;border-radius:0 18px 18px 0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;padding:calc(16px + env(safe-area-inset-top)) 12px calc(24px + env(safe-area-inset-bottom))!important}
+ body.wk-drawer-open{overflow:hidden}
+}
+@media(max-width:600px){
+ .wk-hdr-name{max-width:32vw!important;font-size:14px!important}
+ #wkPlusBtn{padding:8px 10px;font-size:13px}
+ .wk-vbadge{font-size:10px}
+}
+/* Fond sombre + tiroir « ⋯ » */
+#wk-backdrop{position:fixed;inset:0;background:rgba(10,16,32,.5);z-index:750;display:none}
+body.wk-drawer-open #wk-backdrop{display:block}
+@media(min-width:851px){body.wk-drawer-open #wk-backdrop.wk-nav-only{display:none}}
+#wk-more-drawer{position:fixed;top:0;bottom:0;left:0;width:min(86vw,340px);background:var(--surface);color:var(--text);border-right:1px solid var(--line);box-shadow:0 12px 40px rgba(0,0,0,.3);z-index:900;transform:translateX(-105%);visibility:hidden;transition:transform .22s,visibility .22s;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:calc(12px + env(safe-area-inset-top)) 12px calc(24px + env(safe-area-inset-bottom));border-radius:0 18px 18px 0}
+#wk-more-drawer.open{transform:none;visibility:visible}
+.wk-md-head{display:flex;justify-content:space-between;align-items:center;padding:8px 6px 14px;border-bottom:1px solid var(--line);margin-bottom:8px}
+.wk-md-item{display:block;width:100%;text-align:left;background:transparent;color:var(--text);padding:13px 14px;border-radius:10px;font-weight:600;font-size:15px}
+.wk-md-item:hover{background:var(--bg)}
+/* Fenêtre de paiement : toujours fermable */
+.wk-pay-box{position:relative}
+.wk-pay-box h2{padding-right:44px}
+.wk-pay-x{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:50%;padding:0;font-size:22px;line-height:1}
+</style>
+<script id="wk-blocC-script">
+(function(){'use strict';try{
+ const q=s=>document.querySelector(s),qa=s=>[...document.querySelectorAll(s)];
+ const mobile=()=>matchMedia('(max-width:850px)').matches;
+
+ /* 1. Mot de passe : traduire la vraie raison du refus */
+ function frPw(e){
+  const m=String(e&&e.message||''),R=(e&&e.reasons)||[];
+  const x=m.match(/at least (\d+) characters?/i);
+  if(R.includes('length')||x)return 'Le mot de passe est trop court pour les règles du serveur'+(x?' : il faut au moins '+x[1]+' caractères.':'.');
+  if(R.includes('characters')||/character of each|should contain at least one/i.test(m))return 'Le mot de passe doit mélanger minuscules, majuscules, chiffres et symboles (par exemple @ # ! ?).';
+  if(R.includes('pwned')||/weak|pwned|compromised|easy to guess|known to be/i.test(m))return 'Ce mot de passe est trop courant ou figure dans des fuites de données : choisis-en un autre, plus original.';
+  return null;
+ }
+ function patchAuth(){
+  if(!window.SB||!SB.auth||SB.auth.__wkPwFr)return false;
+  ['signUp','updateUser'].forEach(n=>{
+   if(typeof SB.auth[n]!=='function')return;
+   const f=SB.auth[n].bind(SB.auth);
+   SB.auth[n]=async function(){
+    const r=await f.apply(null,arguments);
+    if(r&&r.error){const t=frPw(r.error);if(t){const er=new Error(t);er.status=r.error.status;er.code=r.error.code;return {...r,error:er}}}
+    return r;
+   };
+  });
+  SB.auth.__wkPwFr=true;return true;
+ }
+ if(!patchAuth()){let n=0;const t=setInterval(()=>{if(patchAuth()||++n>60)clearInterval(t)},200)}
+
+ /* Aide en direct sous le champ mot de passe */
+ const _vi=vInsc;
+ vInsc=function(){
+  _vi();
+  const pw=q('#pw');if(!pw||q('#wk-pw-hint'))return;
+  const h=document.createElement('p');h.id='wk-pw-hint';h.className='meta';
+  const base='8 caractères minimum. Évite 12345678, azerty, motdepasse…';h.textContent=base;pw.after(h);
+  pw.addEventListener('input',()=>{
+   const v=pw.value;
+   if(!v){h.className='meta';h.textContent=base;return}
+   const w=window.wkWeakPassword?window.wkWeakPassword(v,(q('#mail')||{}).value):(v.length<8?'Utilise au moins 8 caractères.':null);
+   h.className=w?'meta warn':'meta ok';h.textContent=w||'✔ Mot de passe accepté';
+  });
+ };
+
+ /* 2. Paiement : rendre la fenêtre fermable */
+ function fixPay(){
+  const o=q('#wk-pay-ov');if(!o)return;delete o.dataset.lock;
+  const b=o.querySelector('.wk-pay-box');if(!b)return;
+  if(!b.querySelector('.wk-pay-x')){
+   const x=document.createElement('button');x.type='button';x.className='wk-pay-x ghost';x.setAttribute('aria-label','Fermer');x.textContent='×';x.onclick=()=>o.remove();b.prepend(x);
+  }
+  if(!b.querySelector('.btns')){
+   const f=document.createElement('div');f.className='btns';f.innerHTML='<button type="button" class="ghost">Annuler et fermer</button>';f.firstChild.onclick=()=>o.remove();b.append(f);
+  }
+ }
+ new MutationObserver(fixPay).observe(document.body,{childList:true,subtree:true});
+ window.addEventListener('pageshow',e=>{if(e.persisted)q('#wk-pay-ov')?.remove()});
+ document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden){const o=q('#wk-pay-ov');if(o&&/Redirection vers SasPay|Préparation du paiement/.test(o.textContent))o.remove()}
+ });
+
+ /* 3. Menus : boutons ☰ et ⋯ et tiroirs pleine hauteur */
+ let drawer=null,backdrop=null;
+ const drawerOpen=()=>!!(drawer&&drawer.classList.contains('open'));
+ function closeAll(){
+  if(drawer)drawer.classList.remove('open');
+  q('#nav')?.classList.remove('wk-nav-open');
+  document.body.classList.remove('wk-drawer-open');
+ }
+ function build(){
+  if(!backdrop){backdrop=document.createElement('div');backdrop.id='wk-backdrop';backdrop.onclick=closeAll;document.body.append(backdrop)}
+  if(!drawer){
+   drawer=document.createElement('aside');drawer.id='wk-more-drawer';drawer.setAttribute('aria-label','Menu');
+   drawer.innerHTML='<div class="wk-md-head"><b>Menu WORKLY</b><button type="button" class="ghost" aria-label="Fermer" style="width:38px;height:38px;padding:0;font-size:22px">×</button></div><div id="wk-md-items"></div>';
+   drawer.querySelector('button').onclick=closeAll;
+   drawer.addEventListener('click',e=>{if(e.target.closest('.wk-md-item'))closeAll()});
+   document.body.append(drawer);
+  }
+ }
+ function items(){
+  if(!S.user)return [['go','connexion','Connexion'],['go','inscription','Créer un compte'],['go','tarifs','Tarifs'],['go','parametres','Paramètres']];
+  const a=[['go','compte',role()==='entreprise'?'Profil entreprise':'Mon profil'],['go','worklyplus','✨ WORKLY+'],['go','tarifs','Abonnement'],['go','notifications','Notifications']];
+  if(role()==='candidat')a.push(['wkOpenReferral','','Parrainage']);
+  a.push(['go','parametres','Paramètres']);
+  if(S.isAdmin)a.push(['wkAdminPage','','Administration']);
+  a.push(['logout','','Se déconnecter']);return a;
+ }
+ function openMore(){
+  build();closeAll();
+  q('#wk-md-items').innerHTML=items().map(([a,id,l])=>'<button type="button" class="wk-md-item" data-a="'+a+'"'+(id?' data-id="'+id+'"':'')+'>'+l+'</button>').join('');
+  drawer.classList.add('open');document.body.classList.add('wk-drawer-open');
+ }
+ function toggleNav(){
+  if(!mobile()){document.body.classList.toggle('wk-nav-collapsed');return}
+  const n=q('#nav'),open=!n.classList.contains('wk-nav-open');closeAll();build();
+  if(open){n.classList.add('wk-nav-open');document.body.classList.add('wk-drawer-open')}
+ }
+ A.wkAdminPage=()=>{location.href='admin.html'};
+ A.wkOpenReferral=()=>{
+  go('parametres');let n=0;
+  const t=setInterval(()=>{
+   const d=qa('#view details.wk-settings-entry').find(x=>/parrainage/i.test(x.querySelector('summary')?.textContent||''));
+   if(d){clearInterval(t);d.open=true;d.scrollIntoView({behavior:'smooth',block:'center'})}
+   else if(++n>25){clearInterval(t);toast('La rubrique Parrainage est dans Paramètres (compte candidat).')}
+  },150);
+ };
+
+ function place(){
+  const hd=q('.wrap>header.wk-hdr'),row=hd&&hd.querySelector('.wk-hdr-row2');if(!row)return;
+  document.documentElement.style.setProperty('--wk-hdr-h',(hd.offsetHeight+4)+'px');
+  const tg=q('.wk-menu-toggle'),sb=q('#wk-searchbar');let mb=q('#wk-more-btn');
+  if(!mb){mb=document.createElement('button');mb.id='wk-more-btn';mb.type='button';mb.className='ghost';mb.textContent='⋯';mb.setAttribute('aria-label','Plus d’options');mb.onclick=()=>{drawerOpen()?closeAll():openMore()}}
+  if(tg){tg.onclick=toggleNav;tg.setAttribute('aria-label','Menu de navigation');if(row.firstElementChild!==tg)row.prepend(tg);if(tg.nextElementSibling!==mb)tg.after(mb)}
+  else if(!mb.isConnected)row.prepend(mb);
+  if(sb&&mb.nextElementSibling!==sb)mb.after(sb);
+  qa('#nav a[href="#publications"]').forEach(a=>a.setAttribute('href','#feed'));
+ }
+ const _dn=drawNav;drawNav=function(r){_dn(r);place()};
+ place();window.addEventListener('load',place);setTimeout(place,800);
+ window.addEventListener('resize',()=>{place();if(!mobile())closeAll()});
+ window.addEventListener('hashchange',closeAll);
+ document.addEventListener('click',e=>{if(e.target.closest('#nav a'))closeAll()});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'){q('#wk-pay-ov')?.remove();closeAll()}});
+}catch(e){console.error('WORKLY bloc C :',e)}})();
+</script>
+
 </body>
 </html>
