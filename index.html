@@ -2092,7 +2092,7 @@ setTimeout(()=>{try{drawNav();tick()}catch(e){}},0);
     shell(`<h2>Le prix a changé</h2><p>Le montant à payer est maintenant de <b>${fcfa(PAY.amount)}</b>.</p><div class="btns"><button data-a="wkPayGo2">Continuer</button><button class="ghost" data-a="wkPayCancel">Annuler</button></div>`);return}
    shell(`<h2>Paiement impossible</h2><p>${esc(r.error.message||'Réessaie plus tard.')}</p><div class="btns"><button class="ghost" data-a="wkPayCancel">Fermer</button></div>`);return;
   }
-  const d=r.data,url=d.checkout_url;
+  const d=r.data?.data||r.data,url=d.checkout_url;
   if(url&&/^https:\/\//i.test(url)){
    shell('<h2>Redirection…</h2><p class="meta">Tu es redirigé vers la page de paiement sécurisée.</p>',true);
    location.href=url;return;
