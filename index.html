@@ -2181,7 +2181,7 @@ setTimeout(()=>{try{drawNav();tick()}catch(e){}},0);
 
  A.sendreset=async function(){
   const m=((document.querySelector('#mail')||{}).value||'').trim().toLowerCase();
-  if(!/^\\S+@\\S+\\.\\S+$/.test(m)){toast('Renseigne un e-mail valide');return}
+  if(!/^\S+@\S+\.\S+$/.test(m)){toast('Renseigne un e-mail valide');return}
   const wait=60000-(Date.now()-(+localStorage.getItem(LAST+m)||0));
   if(wait>0){toast('Patiente '+Math.ceil(wait/1000)+' s avant de redemander un lien.');return}
   const btn=document.querySelector('[data-a="sendreset"]');
