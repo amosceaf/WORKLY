@@ -1997,5 +1997,221 @@ setTimeout(()=>{try{drawNav();tick()}catch(e){}},0);
  if(!patch()){let n=0;const t=setInterval(()=>{if(patch()||++n>50)clearInterval(t)},200)}
 })();
 </script>
+
+
+<!-- ============================================================
+     WORKLY × SasPay — BLOC A : paiements
+     A coller dans index.html, JUSTE AVANT la toute dernière balise </body>
+     (après le bloc <script id="wk-password-security">).
+     Aucune clé secrète ici : le navigateur ne parle qu'aux fonctions Supabase.
+     ============================================================ -->
+<style id="wk-pay-style">
+#wk-pay-ov{position:fixed;inset:0;z-index:300;background:rgba(10,16,32,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.wk-pay-box{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:18px;max-width:460px;width:100%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.35);max-height:90vh;overflow:auto}
+.wk-pay-box h2{margin:0 0 10px;font-size:20px}
+.wk-pay-line{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.wk-pay-state{display:flex;align-items:center;gap:10px;font-weight:700;margin:12px 0}
+.wk-pay-state i{width:14px;height:14px;border-radius:50%;background:var(--warn);flex:none}
+.wk-pay-state.ok i{background:var(--ok)}.wk-pay-state.ko i{background:#dc2626}
+.wk-pay-badge{font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px;background:var(--soft);color:var(--brand);white-space:nowrap}
+.wk-pay-badge.ok{background:#e8f7ee;color:#16733b}.wk-pay-badge.ko{background:#fdeaea;color:#a52828}
+</style>
+<script id="wk-pay-script">
+(function(){'use strict';try{
+ const q=s=>document.querySelector(s);
+ const PLAN_LABEL={premium:'Premium',starter:'Starter',business:'Business',pro:'Pro'};
+ const fcfa=n=>Math.round(n).toLocaleString('fr-FR')+' FCFA';
+ const EUR_TO_XOF=655.957;
+
+ /* Appel d'une fonction Supabase, avec message d'erreur lisible */
+ async function FN(name,body){
+  try{
+   const r=await SB.functions.invoke(name,{body});
+   if(r.error){
+    let b={};try{b=await r.error.context.json()}catch(e){}
+    return {ok:false,error:b.error||{code:'network',message:'Service de paiement injoignable. Vérifie ta connexion puis réessaie.'}};
+   }
+   if(r.data&&r.data.ok===false)return {ok:false,error:r.data.error||{message:'Paiement impossible.'}};
+   return {ok:true,data:r.data};
+  }catch(e){return {ok:false,error:{code:'network',message:'Service de paiement injoignable. Vérifie ta connexion puis réessaie.'}}}
+ }
+
+ /* Montant AFFICHÉ (le serveur recalcule et fait foi) */
+ function localAmount(p){
+  const audience=role()==='candidat'?'candidat':'entreprise';
+  if(p.product==='credits')return {50:6000,150:17000,500:55000}[p.id];
+  const d=(S.plans||[]).find(x=>x.audience===audience&&x.id===p.id),annual=p.period==='annual';
+  if(audience==='candidat'){
+   const m=Number(d?.price_eur??3.57),eur=annual?Number(d?.annual_price_eur??m*10):m;
+   return Math.round(eur*EUR_TO_XOF);
+  }
+  const def={starter:4500,business:12000,pro:25000}[p.id],m=Number(d?.price_fcfa??def);
+  return Math.round(annual?Number(d?.annual_price_fcfa??m*10):m);
+ }
+ const labelOf=p=>p.product==='credits'?p.id+' crédits WORKLY':'Abonnement '+(PLAN_LABEL[p.id]||p.id)+' ('+(p.period==='annual'?'annuel':'mensuel')+')';
+
+ /* Fenêtre */
+ const close=()=>{const o=q('#wk-pay-ov');if(o)o.remove()};
+ function shell(html,lock){close();const o=document.createElement('div');o.id='wk-pay-ov';
+  o.innerHTML='<div class="wk-pay-box" role="dialog" aria-modal="true">'+html+'</div>';
+  if(lock)o.dataset.lock='1';
+  o.addEventListener('click',e=>{if(e.target===o&&!o.dataset.lock)close()});
+  document.body.appendChild(o);return o}
+
+ let PAY=null;
+ function openPay(p){
+  PAY=p;PAY.amount=localAmount(p);
+  const renewal=p.product==='plan'&&(S.user.plan||'gratuit')===p.id&&S.user.plan_expires_at&&new Date(S.user.plan_expires_at)>new Date();
+  shell(`<h2>Confirmer ton achat</h2>
+   <div class="wk-pay-line"><span>Produit</span><b>${esc(labelOf(p))}</b></div>
+   <div class="wk-pay-line"><span>Montant à payer</span><b>${fcfa(PAY.amount)}</b></div>
+   ${renewal?'<p class="meta">Tu as déjà cette offre : la nouvelle période s’ajoutera à la fin de la période en cours.</p>':''}
+   <p class="meta">Tu seras redirigé vers la page de paiement sécurisée SasPay, où s’affichent les moyens de paiement disponibles (Mobile Money, carte…).</p>
+   <p class="meta">Le montant est contrôlé par le serveur. Rien n’est activé tant que le paiement n’est pas confirmé.</p>
+   <div class="btns"><button data-a="wkPayGo">Payer ${fcfa(PAY.amount)}</button><button class="ghost" data-a="wkPayCancel">Annuler</button></div>`);
+ }
+
+ A.choose=function(id){
+  if(!S.user){toast('Crée d’abord ton compte');go('inscription');return}
+  if(id==='gratuit'){toast('Pour revenir à l’offre gratuite, écris-nous à '+B.mail);return}
+  const isCred=/^credits-(50|150|500)$/.test(id);
+  if(!isCred){
+   const ok=role()==='candidat'?['premium']:['starter','business','pro'];
+   if(!ok.includes(id)){toast('Cette offre n’est pas disponible pour ton type de compte');return}
+  }
+  openPay(isCred?{product:'credits',id:id.split('-')[1]}:{product:'plan',id,period:ANN?'annual':'monthly'});
+ };
+ A.wkPayCancel=close;A.wkPayClose=close;
+
+ A.wkPayGo=async function(){
+  if(!PAY)return;
+  const box=q('.wk-pay-box');if(box)box.innerHTML='<h2>Préparation du paiement…</h2><p class="meta">Merci de patienter quelques secondes.</p>';
+  const r=await FN('saspay-create-payment',{product:PAY.product,id:PAY.id,period:PAY.period,flow:'checkout',expected_amount_xof:PAY.amount});
+  if(!r.ok){
+   if(r.error.code==='price_changed'&&r.error.amount_xof){PAY.amount=r.error.amount_xof;
+    shell(`<h2>Le prix a changé</h2><p>Le montant à payer est maintenant de <b>${fcfa(PAY.amount)}</b>.</p><div class="btns"><button data-a="wkPayGo2">Continuer</button><button class="ghost" data-a="wkPayCancel">Annuler</button></div>`);return}
+   shell(`<h2>Paiement impossible</h2><p>${esc(r.error.message||'Réessaie plus tard.')}</p><div class="btns"><button class="ghost" data-a="wkPayCancel">Fermer</button></div>`);return;
+  }
+  const d=r.data,url=d.checkout_url;
+  if(url&&/^https:\/\//i.test(url)){
+   shell('<h2>Redirection…</h2><p class="meta">Tu es redirigé vers la page de paiement sécurisée.</p>',true);
+   location.href=url;return;
+  }
+  showStatus(d.tx_id);
+ };
+ A.wkPayGo2=()=>A.wkPayGo();
+
+ /* Suivi du statut : En attente / Paiement réussi / Paiement échoué */
+ async function refreshUser(){try{await loadAll();render()}catch(e){}}
+ function showStatus(tx){
+  shell('<h2>Vérification du paiement</h2><div class="wk-pay-state" id="wkPayState"><i></i><span>En attente de confirmation…</span></div><p class="meta" id="wkPayMsg">Nous interrogeons SasPay. Ne ferme pas cette fenêtre.</p><div class="btns" id="wkPayBtns"></div>',true);
+  let tries=0;
+  const set=(cls,title,msg,btns)=>{const s=q('#wkPayState');if(!s)return;s.className='wk-pay-state '+cls;s.querySelector('span').textContent=title;q('#wkPayMsg').textContent=msg;q('#wkPayBtns').innerHTML=btns||''};
+  const step=async()=>{
+   if(!q('#wkPayState'))return;
+   const r=await FN('saspay-verify-payment',{tx_id:tx});
+   if(!r.ok){set('','Vérification impossible',r.error.message||'Réessaie dans un instant.',`<button data-a="wkPayCheck" data-id="${tx}">Réessayer</button><button class="ghost" data-a="wkPayClose">Fermer</button>`);return}
+   const d=r.data,s=d.status;
+   if(s==='SUCCESS'&&d.fulfilled){
+    set('ok','Paiement réussi','Ton achat est confirmé et activé. Merci !',`<button data-a="wkPayDone">Continuer</button>`);
+    await refreshUser();return;
+   }
+   if(s==='SUCCESS'&&d.needs_review){set('','Paiement reçu — contrôle en cours','Ton paiement est bien arrivé mais doit être contrôlé par WORKLY avant activation. Écris-nous à '+B.mail+' en indiquant la référence '+tx+'.',`<button class="ghost" data-a="wkPayClose">Fermer</button>`);return}
+   if(s==='FAILED'||s==='CANCELLED'){set('ko','Paiement échoué','Le paiement n’a pas abouti. Aucun montant n’est activé. Tu peux réessayer.',`<button data-a="wkPayAgain">Réessayer</button><button class="ghost" data-a="wkPayClose">Fermer</button>`);return}
+   if(++tries<15){setTimeout(step,4000);return}
+   set('','Toujours en attente','La confirmation n’est pas encore arrivée. Si tu as bien payé, patiente quelques minutes puis vérifie à nouveau (menu Abonnement → Mes paiements).',`<button data-a="wkPayCheck" data-id="${tx}">Vérifier à nouveau</button><button class="ghost" data-a="wkPayClose">Fermer</button>`);
+  };
+  step();
+ }
+ A.wkPayCheck=tx=>showStatus(tx);
+ A.wkPayDone=()=>{close();go(role()==='candidat'?'tableau':'tableau')};
+ A.wkPayAgain=()=>{close();go('tarifs')};
+
+ /* Retour depuis la page de paiement : ?tx=<id>. La redirection n'est PAS une preuve : on vérifie côté serveur. */
+ const txq=new URLSearchParams(location.search).get('tx');
+ if(txq&&/^[0-9a-f-]{36}$/i.test(txq)){
+  const t0=Date.now(),w=setInterval(()=>{
+   if(typeof S!=='undefined'&&S.user){clearInterval(w);history.replaceState(null,'',location.pathname+'#tarifs');showStatus(txq)}
+   else if(Date.now()-t0>25000){clearInterval(w);shell('<h2>Connecte-toi pour vérifier ton paiement</h2><p class="meta">Reconnecte-toi puis ouvre Abonnement → Mes paiements.</p><div class="btns"><button data-a="wkPayLogin">Se connecter</button></div>')}
+  },400);
+ }
+ A.wkPayLogin=()=>{close();history.replaceState(null,'',location.pathname+'#connexion');go('connexion')};
+
+ /* Historique des paiements (page Tarifs / Abonnement) */
+ const STL={SUCCESS:['Paiement réussi','ok'],PENDING:['En attente',''],CREATED:['En attente',''],FAILED:['Paiement échoué','ko'],CANCELLED:['Annulé','ko']};
+ async function history_(){
+  const v=q('#view');if(!v||!S.user)return;
+  const host=document.createElement('section');host.className='card';host.id='wk-pay-hist';
+  host.innerHTML='<h2>Mes paiements</h2><p class="meta">Chargement…</p>';v.appendChild(host);
+  const exp=S.user.plan_expires_at&&S.user.plan&&S.user.plan!=='gratuit'?'<p class="meta">Ton offre '+esc(planName())+' est active jusqu’au '+new Date(S.user.plan_expires_at).toLocaleDateString('fr-FR')+'.</p>':'';
+  const r=await SB.from('saspay_transactions').select('id,product_type,product_id,billing_period,credits_amount,amount_xof,status,fulfilled_at,created_at').order('created_at',{ascending:false}).limit(15);
+  if(!host.isConnected)return;
+  if(r.error){host.innerHTML='<h2>Mes paiements</h2>'+exp+'<p class="meta">Historique indisponible pour le moment.</p>';return}
+  const rows=(r.data||[]).map(x=>{
+   const lab=x.product_type==='credits'?x.credits_amount+' crédits':'Offre '+(PLAN_LABEL[x.product_id]||x.product_id)+' ('+(x.billing_period==='annual'?'annuel':'mensuel')+')';
+   let [t,c]=STL[x.status]||[x.status,''];if(x.status==='SUCCESS'&&!x.fulfilled_at){t='Payé — activation en cours';c=''}
+   const pend=x.status==='PENDING'||x.status==='CREATED'||(x.status==='SUCCESS'&&!x.fulfilled_at);
+   return `<div class="tip row"><span><b>${esc(lab)}</b><br><span class="meta">${new Date(x.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})} · ${fcfa(Number(x.amount_xof))}</span></span><span style="display:flex;gap:8px;align-items:center"><span class="wk-pay-badge ${c}">${esc(t)}</span>${pend?`<button class="ghost" data-a="wkPayCheck" data-id="${x.id}">Vérifier</button>`:''}</span></div>`}).join('');
+  host.innerHTML='<h2>Mes paiements</h2>'+exp+(rows||'<p class="meta">Aucun paiement pour le moment.</p>');
+ }
+ const _vt=vTarifs;vTarifs=function(){_vt();if(S.user)history_()};
+
+ /* Fin d'une offre payée : retour automatique à « gratuit » (côté serveur) */
+ const _la=loadAll;
+ loadAll=async function(){
+  await _la();
+  if(S.uid&&S.user){
+   try{
+    const r=await SB.rpc('my_plan_check');
+    if(r.data&&r.data.expired){const p=await SB.from('profiles').select('*').eq('id',S.uid).maybeSingle();if(p.data)S.user=p.data;toast('Ton abonnement est arrivé à échéance : ton compte est revenu à l’offre gratuite.')}
+   }catch(e){/* fonction non installée : sans effet */}
+  }
+ };
+}catch(e){console.error('WORKLY × SasPay (paiements) :',e)}})();
+</script>
+
+<!-- ============================================================
+     WORKLY — BLOC B : « Mot de passe oublié » plus fiable
+     Intégré après le bloc A, avant la fermeture de body.
+     ============================================================ -->
+<script id="wk-reset-fix">
+(function(){'use strict';try{
+ const LAST='wk_reset_last_';
+ const redirect=()=>location.origin+location.pathname;
+
+ A.sendreset=async function(){
+  const m=((document.querySelector('#mail')||{}).value||'').trim().toLowerCase();
+  if(!/^\\S+@\\S+\\.\\S+$/.test(m)){toast('Renseigne un e-mail valide');return}
+  const wait=60000-(Date.now()-(+localStorage.getItem(LAST+m)||0));
+  if(wait>0){toast('Patiente '+Math.ceil(wait/1000)+' s avant de redemander un lien.');return}
+  const btn=document.querySelector('[data-a="sendreset"]');
+  if(btn){btn.disabled=true;btn.textContent='Envoi…'}
+  try{
+   const r=await SB.auth.resetPasswordForEmail(m,{redirectTo:redirect()});
+   if(r.error){
+    const msg=String(r.error.message||'');
+    if(r.error.status===429||/rate limit|too many/i.test(msg))toast('Trop d’e-mails envoyés pour le moment. Réessaie dans une heure ou contacte le support.');
+    else toast('Envoi impossible : '+msg);
+    return;
+   }
+   try{localStorage.setItem(LAST+m,String(Date.now()))}catch(e){}
+   toast('Demande envoyée. Si un compte existe, un e-mail arrive dans quelques minutes.');
+   const box=document.querySelector('#wk-reset-info');
+   if(box)box.innerHTML='<b>Demande envoyée à '+esc(m)+'.</b><br>Vérifie aussi tes courriers indésirables (spam). Le lien est valable un temps limité et ne fonctionne qu’une fois.';
+  }finally{if(btn){btn.disabled=false;btn.textContent='Envoyer le lien'}}
+ };
+
+ const _vo=vOubli;
+ vOubli=function(){_vo();
+  const card=document.querySelector('#view .card');
+  if(card&&!card.querySelector('#wk-reset-info'))card.insertAdjacentHTML('beforeend','<p class="meta" id="wk-reset-info" style="margin-top:12px">Saisis l’e-mail de ton compte : tu recevras un lien pour choisir un nouveau mot de passe.</p>');
+ };
+
+ /* Lien expiré ou déjà utilisé : Supabase renvoie #error=...&error_code=otp_expired */
+ if(/error_code=otp_expired|error=access_denied/.test(location.hash)){
+  setTimeout(()=>{history.replaceState(null,'',location.pathname);toast('Ce lien a expiré ou a déjà été utilisé. Demande un nouveau lien.');go('oubli')},900);
+ }
+}catch(e){console.error('WORKLY mot de passe oublié :',e)}})();
+</script>
 </body>
 </html>
