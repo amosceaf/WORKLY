@@ -201,6 +201,90 @@ const A={go:id=>go(id), async chatsend(txt){const inp=$("#ci");if(!inp)return;co
   if(S.user)Object.assign(S.user,{sector,workforce,country,city,phone,site});
   toast("Compte entreprise créé");go("tableau")
 }, async login(){const{error}=await SB.auth.signInWithPassword({email:g("mail"),password:$("#pw").value});if(error){toast(msgErr(error));return}  await loadAll();if(!S.user){toast(SUSP||"Profil introuvable");return}go(role()==="candidat"?"feed":"tableau")}, async logout(){await SB.auth.signOut();await loadAll();go("accueil")}, async apply(id){if(role()!=="candidat"){toast("Crée un compte candidat pour postuler");go("inscription");return}  const{error}=await SB.from("applications").insert({candidate:S.uid,job_id:+id});if(error&&error.code!=="23505"){toast("Erreur : "+error.message);return}  S.applied[id]="Reçue";toast("Candidature envoyée");refresh()}, async save(id){if(role()!=="candidat"){toast("Crée un compte candidat pour enregistrer");go("inscription");return}id=+id;  if(S.saved.includes(id)){await SB.from("saved_jobs").delete().eq("candidate",S.uid).eq("job_id",id);S.saved=S.saved.filter(x=>x!==id)}  else{await SB.from("saved_jobs").insert({candidate:S.uid,job_id:id});S.saved.push(id)}refresh()}, async report(id){if(!S.uid){toast("Connecte-toi pour signaler une offre");go("connexion");return}await SB.from("reports").insert({job_id:+id,reporter:S.uid});S.reported.push(+id);toast("Merci, offre signalée pour vérification");refresh()}, adaptjob(id){if(role()!=="candidat"){toast("Crée un compte candidat pour utiliser Evolia");go("inscription");return}TARGET=+id;ET="adapt";SKIP=true;EHUB=false;go("evolia")}, etab(id){ET=id;vEvo()}, async ana(){const t=$("#cv").value;if(t.trim().length<30){toast("Colle d’abord ton CV");return}const ai=await evoAI("analyse",{cv:t,poste:S.user.poste});if(ai.ok){$("#res").innerHTML=aiBox(ai.text);return}if(ai.err==="consent")return;if(ai.err==="quota"||ai.err==="rate"){aiLimit(ai);return}if(!await quota("analyse"))return;const a=analyse(t,S.user);  $("#res").innerHTML=`<h2 style="margin-top:14px">Score : ${a.s}/100</h2><div class="bar"><i style="width:${a.s}%"></i></div>`+a.o.map(x=>`<div class="tip ${x[0]?"ok":"warn"}">${x[0]?"✔":"→"} ${esc(x[1])}</div>`).join("")}, async gen(){const jb=jobs().find(j=>j.id===+$("#tj").value);if(jb){const ai=await evoAI("adapt",{cv:S.user.cv||"",poste:S.user.poste,skills:S.user.skills,niveau:LV[S.user.niveau||0],job:{title:jb.title,company:jb.company,tags:jb.tags,description:jb.description}});if(ai.ok){TARGET=jb.id;$("#res").innerHTML=aiBox(ai.text);return}if(ai.err==="consent")return;if(ai.err==="quota"||ai.err==="rate"){aiLimit(ai);return}}if(!await quota("adapt"))return;TARGET=+$("#tj").value;$("#res").innerHTML=`<textarea style="min-height:320px;margin-top:12px">${esc(gen(jobs().find(j=>j.id===TARGET)))}</textarea>`}, tip(id){$("#t"+id).textContent="Conseil : "+QS[id][1]}, ex(id){const f=S.user.field||FIELDS[0],d=S.done[f]||(S.done[f]=[]),i=+id,k=d.indexOf(i);k>=0?d.splice(k,1):d.push(i);save("done",S.done);vEvo()}, async pub(){if(!g("et")||!g("ep")){toast("Renseigne le poste et le pays");return}if(!$("#ed").value){toast("Choisis un secteur d’activité");return}const dm=($("#edesc").value+" "+g("et")).match(DISC);if(dm&&!confirm("Cette formulation pourrait être discriminatoire (« "+dm[0]+" »). Publier quand même ?"))return;  const row={title:g("et"),country:g("ep"),city:g("ev")||"—",level:+$("#el").value,field:$("#ed").value,contract:$("#ec").value,salary:g("es"),deadline:$("#edl").value||null,description:$("#edesc").value.trim(),remote:$("#er").checked,tags:g("eg").split(",").map(x=>x.trim()).filter(Boolean)};  let r;if(S.editId)r=await SB.from("jobs").update(row).eq("id",S.editId);else r=await SB.from("jobs").insert({...row,owner:S.uid,company:S.user.company,logo_url:S.user.avatar_url||null});  if(r.error){if(/Limite/.test(r.error.message)){toast("Limite gratuite atteinte");go("tarifs")}else toast("Impossible d’enregistrer : "+r.error.message);return}  const was=S.editId;S.editId=null;S.dupe=null;await loadAll();toast(was?"Offre modifiée":"Offre publiée");render()}, plan(){toast("Le paiement Premium sera connecté à l’étape 7")}, async psave(){const p={poste:g("poste"),niveau:+$("#niv").value,pays:g("pays"),ville:g("ville"),skills:g("skills"),cv:$("#cv").value,field:$("#csec").value||S.user.field||""};const{error}=await SB.from("profiles").update(p).eq("id",S.uid);if(error){toast("Erreur : "+error.message);return}Object.assign(S.user,p);toast("Profil enregistré")},cvtemplate(id){if(!["classic","modern","compact"].includes(id)){toast("Ce modèle Premium sera activé après connexion du paiement de crédits.");return}const d=$("#cvx_name")?readCVForm():cvData();d.template=id;save(CVKEY(),d);vCVStudio()},cvpreview(){const d=readCVForm();$("#cvx_preview").innerHTML=cvPreview(d);save(CVKEY(),d);toast("Aperçu actualisé")},async cvsave(){const d=readCVForm();if(!d.name.trim()||!d.title.trim()){toast("Renseigne au minimum ton nom et ton titre professionnel");return}save(CVKEY(),d);const cv=cvText(d);if(S.uid){const{error}=await SB.from("profiles").update({cv}).eq("id",S.uid);if(error){toast("Brouillon local enregistré, mais synchronisation Supabase impossible : "+error.message);return}S.user.cv=cv}$("#cvx_preview").innerHTML=cvPreview(d);toast("CV enregistré")},cvprint(){const d=readCVForm(),w=window.open("","_blank");if(!w){toast("Autorise les fenêtres pop-up pour exporter le PDF");return}w.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>CV - ${esc(d.name)}</title><style>body{font:14px Arial,sans-serif;color:#182235;margin:32px}.wkcv{max-width:780px;margin:auto}.wkcv header{background:${esc(d.accent)};color:#fff;padding:22px}.wkcv h1{margin:0;font-size:28px}.wkcv header h2{font-size:17px}.wkcv section{margin:18px 0;page-break-inside:avoid}.wkcv section h3{color:${esc(d.accent)};border-bottom:1px solid #ddd;padding-bottom:5px;text-transform:uppercase;font-size:13px}.wkcv p{white-space:pre-wrap;line-height:1.55}@page{margin:15mm}</style></head><body>${cvPreview(d)}<script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script>
+
+<!-- WORKLY — correctif recherche mobile + partage façon Facebook -->
+<style id="wk-mobile-search-final">
+@media(max-width:850px){
+  .wrap>header.wk-hdr{position:sticky!important;top:0!important;z-index:10000!important;overflow:visible!important}
+  .wk-hdr-row2{position:relative!important;z-index:10001!important;overflow:visible!important}
+  .wk-hdr-row2 #wk-searchbar{position:relative!important;z-index:10002!important;flex:1 1 0!important;min-width:0!important;pointer-events:auto!important}
+  #wk-searchbar .wk-search-wrap{position:relative!important;z-index:10003!important;min-height:48px!important;pointer-events:auto!important}
+  #wk-searchbar input#wk-search-input{position:relative!important;z-index:10004!important;display:block!important;min-height:46px!important;height:46px!important;font-size:16px!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important;touch-action:manipulation!important;user-select:text!important;-webkit-user-select:text!important}
+  #wk-search-results{z-index:10005!important}
+}
+.wk-fb-share-overlay{position:fixed;inset:0;z-index:12000;background:rgba(10,18,35,.58);display:flex;align-items:center;justify-content:center;padding:16px}
+.wk-fb-share-dialog{width:min(100%,520px);max-height:min(86vh,720px);overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:18px;box-shadow:0 20px 65px rgba(0,0,0,.28);padding:18px}
+.wk-fb-share-head{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:14px}
+.wk-fb-share-head h2{margin:0;font-size:19px}
+.wk-fb-share-dialog textarea{min-height:100px;resize:vertical;margin:10px 0}
+.wk-fb-share-preview{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--bg);margin:8px 0 14px}
+.wk-fb-share-preview .meta{margin-bottom:6px}
+.wk-fb-share-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.wk-fb-share-actions button{min-height:44px}
+@media(max-width:480px){.wk-fb-share-actions{grid-template-columns:1fr}.wk-fb-share-dialog{padding:14px}}
+</style>
+<script id="wk-mobile-search-and-facebook-share">
+(function(){
+ 'use strict';
+ try{
+  const q=s=>document.querySelector(s);
+  // Ne pas intercepter le toucher : laisser le navigateur ouvrir son clavier virtuel.
+  document.addEventListener('focusin',e=>{
+   if(e.target&&e.target.id==='wk-search-input'){
+    e.target.setAttribute('inputmode','search');
+    e.target.setAttribute('enterkeyhint','search');
+    if(window.matchMedia&&matchMedia('(max-width:850px)').matches){
+     setTimeout(()=>{try{e.target.scrollIntoView({block:'nearest',behavior:'smooth'})}catch(_){}},120);
+    }
+   }
+  });
+  const closeShare=()=>q('#wk-fb-share-overlay')?.remove();
+  A.wkShareCancel=closeShare;
+  A.wkShare=key=>{
+   if(!S.user){toast('Connecte-toi pour partager une publication.');return;}
+   closeShare();
+   const card=document.querySelector('[data-wk-post-key="'+CSS.escape(key)+'"]');
+   if(!card){toast('Publication introuvable. Actualise le fil puis réessaie.');return;}
+   const body=card.querySelector('.wk-feed-body')?.textContent?.trim()||'Publication Workly';
+   const author=card.querySelector('.wk-feed-head b')?.textContent?.trim()||'Membre Workly';
+   const overlay=document.createElement('div');
+   overlay.id='wk-fb-share-overlay';overlay.className='wk-fb-share-overlay';
+   overlay.innerHTML='<section class="wk-fb-share-dialog" role="dialog" aria-modal="true" aria-labelledby="wk-fb-share-title">'+
+    '<div class="wk-fb-share-head"><h2 id="wk-fb-share-title">Partager la publication</h2><button type="button" class="ghost" data-a="wkShareCancel" aria-label="Fermer">✕</button></div>'+
+    '<div class="meta">Publier sur ton fil Workly ou partager avec une autre application.</div>'+
+    '<textarea id="wk-fb-share-caption" maxlength="1000" placeholder="Dis quelque chose à propos de cette publication…"></textarea>'+
+    '<div class="wk-fb-share-preview"><div class="meta">Publication originale · '+author.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))+'</div><div style="white-space:pre-wrap;overflow-wrap:anywhere">'+body.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))+'</div></div>'+
+    '<div class="wk-fb-share-actions"><button type="button" data-a="wkShareToPage" data-id="'+key.replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'">Partager maintenant</button><button type="button" class="ghost" data-a="wkShareOutside" data-id="'+key.replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'">Partager à l’extérieur</button></div>'+
+    '</section>';
+   overlay.addEventListener('click',e=>{if(e.target===overlay)closeShare()});
+   document.body.appendChild(overlay);
+   q('#wk-fb-share-caption')?.focus();
+  };
+  A.wkShareToPage=async key=>{
+   const caption=(q('#wk-fb-share-caption')?.value||'').trim();
+   const btn=q('#wk-fb-share-overlay [data-a="wkShareToPage"]');
+   if(btn){btn.disabled=true;btn.textContent='Publication…'}
+   const r=await SB.rpc('community_share_post_to_page',{p_post_key:key,p_caption:caption});
+   if(r.error){if(btn){btn.disabled=false;btn.textContent='Partager maintenant'}toast('Partage impossible : '+r.error.message);return;}
+   closeShare();toast('Publication partagée sur ton fil Workly.');
+   if(typeof A.feed==='function')await A.feed();
+  };
+  A.wkShareOutside=async key=>{
+   const card=document.querySelector('[data-wk-post-key="'+CSS.escape(key)+'"]');
+   const body=card?.querySelector('.wk-feed-body')?.textContent?.trim()||'Publication Workly';
+   const url=location.origin+location.pathname+'#feed';
+   const caption=(q('#wk-fb-share-caption')?.value||'').trim();
+   try{
+    if(navigator.share)await navigator.share({title:'WORKLY · Publication',text:(caption?caption+'\n\n':'')+body.slice(0,180),url});
+    else{await navigator.clipboard.writeText((caption?caption+'\n\n':'')+body+' '+url);toast('Texte et lien copiés. Tu peux les partager.')}
+    closeShare();
+   }catch(e){if(e.name!=='AbortError')toast('Partage indisponible sur cet appareil.')}
+  };
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeShare()});
+ }catch(e){console.error('WORKLY partage/recherche mobile :',e)}
+})();
+</script>
+
 </body></html>`);w.document.close()},cvletter(){const d=readCVForm(),job=$("#cvx_job").value.trim(),company=$("#cvx_company").value.trim();if(!job||!company){toast("Indique le poste et l'entreprise");return}const letter=`${d.name||"[Votre nom]"}
 ${d.location||""}
 ${d.email||""}
@@ -483,7 +567,7 @@ try {
       const date=x.created_at?new Date(x.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'}):'';
       const action=isCompany?`data-a="co" data-id="${esc(x.owner)}"`:'';
       const key=esc(x.post_key||((isCompany?'company:':'candidate:')+x.id));
-      return `<article class="card wk-feed-card" data-wk-post-key="${key}"><div class="wk-feed-head" ${action?`style="cursor:pointer" ${action}`:''}>${avatar}<div style="min-width:0;flex:1"><b>${name}</b><div class="meta">${date}</div></div><span class="wk-feed-role">${isCompany?'Entreprise':'Candidat'}</span></div><div class="wk-feed-body">${esc(x.body||'')}</div>${wkMediaHtml(x.photos,x.videos)}<div class="wk-community-social" data-wk-social="${key}"><div class="wk-social-summary" data-wk-summary>Chargement des réactions…</div><div class="wk-social-actions"><button class="ghost" data-a="wkReactionPicker" data-id="${key}">😊 Réagir</button><button class="ghost" data-a="wkComments" data-id="${key}">💬 Commenter</button><button class="ghost" data-a="wkShare" data-id="${key}">↗ Partager à l’extérieur</button><button class="ghost" data-a="wkShareToPage" data-id="${key}">➕ Partager sur ma page</button></div><div class="wk-comments" id="wk-comments-${key.replace(/[^a-zA-Z0-9_-]/g,'_')}"></div></div></article>`;
+      return `<article class="card wk-feed-card" data-wk-post-key="${key}"><div class="wk-feed-head" ${action?`style="cursor:pointer" ${action}`:''}>${avatar}<div style="min-width:0;flex:1"><b>${name}</b><div class="meta">${date}</div></div><span class="wk-feed-role">${isCompany?'Entreprise':'Candidat'}</span></div><div class="wk-feed-body">${esc(x.body||'')}</div>${wkMediaHtml(x.photos,x.videos)}<div class="wk-community-social" data-wk-social="${key}"><div class="wk-social-summary" data-wk-summary>Chargement des réactions…</div><div class="wk-social-actions"><button class="ghost" data-a="wkReactionPicker" data-id="${key}">😊 Réagir</button><button class="ghost" data-a="wkComments" data-id="${key}">💬 Commenter</button><button class="ghost" data-a="wkShare" data-id="${key}">↗ Partager</button></div><div class="wk-comments" id="wk-comments-${key.replace(/[^a-zA-Z0-9_-]/g,'_')}"></div></div></article>`;
     }).join('');
     const sharedCards=shareCards.map(({share,post})=>{
       const sharedBy=share.sharer_id===S.uid?(S.user?.company||S.user?.nom||'Toi'):'Un membre Workly';
