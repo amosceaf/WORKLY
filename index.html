@@ -484,7 +484,7 @@ try {
       const date=x.created_at?new Date(x.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'}):'';
       const action=isCompany?`data-a="co" data-id="${esc(x.owner)}"`:'';
       const key=esc(x.post_key||((isCompany?'company:':'candidate:')+x.id));
-      return `<article class="card wk-feed-card" data-wk-post-key="${key}"><div class="wk-feed-head" ${action?`style="cursor:pointer" ${action}`:''}>${avatar}<div style="min-width:0;flex:1"><b>${name}</b><div class="meta">${date}</div></div><span class="wk-feed-role">${isCompany?'Entreprise':'Candidat'}</span></div><div class="wk-feed-body">${esc(x.body||'')}</div>${wkMediaHtml(x.photos,x.videos)}<div class="wk-community-social" data-wk-social="${key}"><div class="wk-social-summary" data-wk-summary>Chargement des réactions…</div><div class="wk-social-actions"><button class="ghost" data-a="wkReactionPicker" data-id="${key}">😊 Réagir</button><button class="ghost" data-a="wkComments" data-id="${key}">💬 Commenter</button><button class="ghost" data-a="wkShare" data-id="${key}">↗ Partager à l’extérieur</button><button class="ghost" data-a="wkShareToPage" data-id="${key}">➕ Partager sur ma page</button></div><div class="wk-comments" id="wk-comments-${key.replace(/[^a-zA-Z0-9_-]/g,'_')}"></div></div></article>`;
+      return `<article class="card wk-feed-card" data-wk-post-key="${key}"><div class="wk-feed-head" ${action?`style="cursor:pointer" ${action}`:''}>${avatar}<div style="min-width:0;flex:1"><b>${name}</b><div class="meta">${date}</div></div><span class="wk-feed-role">${isCompany?'Entreprise':'Candidat'}</span></div><div class="wk-feed-body">${esc(x.body||'')}</div>${wkMediaHtml(x.photos,x.videos)}<div class="wk-community-social" data-wk-social="${key}"><div class="wk-social-summary" data-wk-summary>Chargement des réactions…</div><div class="wk-social-actions"><button class="ghost" data-a="wkReactionPicker" data-id="${key}">👍 J’aime</button><button class="ghost" data-a="wkComments" data-id="${key}">💬 Commenter</button><button class="ghost" data-a="wkShare" data-id="${key}">↗ Partager</button></div><div class="wk-comments" id="wk-comments-${key.replace(/[^a-zA-Z0-9_-]/g,'_')}"></div></div></article>`;
     }).join('');
     const sharedCards=shareCards.map(({share,post})=>{
       const sharedBy=share.sharer_id===S.uid?(S.user?.company||S.user?.nom||'Toi'):'Un membre Workly';
@@ -527,7 +527,7 @@ try {
   A.wkSetReaction=async value=>{
     const [key,kind]=value.split('|');
     const r=await SB.rpc('community_set_post_reaction',{p_post_key:key,p_kind:kind});
-    if(r.error){toast('Réaction impossible : '+r.error.message);return;}
+    if(r.error){return;}
     await wkRefreshCommunitySocial([key]);
     const panel=document.querySelector(`[data-wk-social="${CSS.escape(key)}"] .wk-reaction-picker`);if(panel)panel.remove();
   };
@@ -1195,6 +1195,41 @@ try {
 @media(max-width:650px){.wkcv{padding:0 15px 18px}.wkcv header{margin:0 -15px 16px;padding:18px 15px}.wkcv header h1{font-size:23px}.wkcv.compact{padding:0 12px 14px}.wkcv.compact header{margin:0 -12px 12px;padding:15px 12px}}
 @media print{body{background:#fff!important}.wkcv{box-shadow:none;border:0}}
 </style>
+
+<style id="wk-safe-social-search-fixes">
+/* Fil : actions compactes et alignées comme sur Facebook */
+#view .wk-social-actions{display:flex!important;align-items:center!important;justify-content:space-around!important;gap:4px!important;flex-wrap:nowrap!important;border-top:1px solid var(--line);padding-top:5px;margin-top:8px}
+#view .wk-social-actions>button{flex:1 1 0!important;min-width:0!important;min-height:34px!important;padding:5px 3px!important;margin:0!important;background:transparent!important;border:0!important;border-radius:7px!important;color:var(--muted)!important;font-size:12px!important;font-weight:600!important;white-space:nowrap!important}
+#view .wk-social-actions>button:hover{background:var(--soft)!important}
+#view .wk-fb-bar{max-width:calc(100vw - 36px);flex-wrap:wrap}
+#view .wk-reaction-picker{order:4}
+@media(max-width:420px){#view .wk-social-actions>button{font-size:11px!important;padding-inline:1px!important}#view .wk-social-actions{gap:1px!important}}
+/* Recherche mobile : le champ reste réellement cliquable et saisissable */
+@media(max-width:850px){
+ .wrap>header.wk-hdr,.wk-hdr-row2,#wk-searchbar,.wk-search-wrap{overflow:visible!important}
+ .wk-hdr-row2{position:relative!important;z-index:10020!important}
+ #wk-searchbar{position:relative!important;z-index:10021!important;pointer-events:auto!important;min-width:0!important}
+ #wk-searchbar .wk-search-wrap{position:relative!important;z-index:10022!important;pointer-events:auto!important}
+ #wk-search-input{position:relative!important;z-index:10023!important;display:block!important;width:100%!important;min-width:0!important;height:44px!important;min-height:44px!important;font-size:16px!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important;touch-action:manipulation!important;user-select:text!important;-webkit-user-select:text!important}
+ #wk-search-submit{position:relative!important;z-index:10024!important;flex:none!important}
+}
+</style>
+<script id="wk-search-focus-and-profile-video">
+(function(){
+ document.addEventListener('touchend',function(e){
+  const input=e.target&&e.target.closest&&e.target.closest('#wk-search-input');
+  if(!input)return;
+  input.focus({preventScroll:true});
+ },{passive:true});
+ document.addEventListener('focusin',function(e){
+  const input=e.target;
+  if(!input||input.id!=='wk-search-input')return;
+  input.setAttribute('inputmode','search');
+  input.setAttribute('enterkeyhint','search');
+ });
+})();
+</script>
+
 </body> </html>&#x20;
 
 <style id="wk-v10-layout-voice">
@@ -1638,7 +1673,7 @@ const _dn=drawNav;drawNav=function(r){_dn(r);wkPaintHdr()};
 wkPaintHdr();
 
 /* ===== 2. Profil candidat (modèle page entreprise) ===== */
-const wkMedia=(p,v)=>{const a=Array.isArray(p)?p:[],b=Array.isArray(v)?v:[];return a.map(u=>/\.pdf(?:$|[?#])/i.test(u)?`<a class="wk-feed-document" href="${esc(u)}" target="_blank" rel="noopener">📄 Ouvrir le document PDF</a>`:`<img src="${esc(u)}" alt="" loading="lazy" style="width:100%;max-height:340px;object-fit:contain;border-radius:12px;background:var(--bg);margin-top:8px">`).join('')+b.map(u=>`<video controls playsinline preload="metadata" style="width:100%;max-height:420px;border-radius:12px;background:#101828;margin-top:8px"><source src="${esc(u)}"></video>`).join('')};
+const wkMedia=(p,v)=>{const a=Array.isArray(p)?p:[],b=Array.isArray(v)?v:[];return a.map(u=>/\.pdf(?:$|[?#])/i.test(u)?`<a class="wk-feed-document" href="${esc(u)}" target="_blank" rel="noopener">📄 Ouvrir le document PDF</a>`:`<img src="${esc(u)}" alt="" loading="lazy" style="width:100%;max-height:340px;object-fit:contain;border-radius:12px;background:var(--bg);margin-top:8px">`).join('')+b.map(u=>`<video controls muted autoplay loop playsinline preload="metadata" style="width:100%;max-height:420px;border-radius:12px;background:#101828;margin-top:8px"><source src="${esc(u)}"></video>`).join('')};
 async function wkPfLoadPosts(){const h=$('#wkPfPosts');if(!h)return;
  const r=await SB.from('candidate_posts').select('*').eq('owner',S.uid).order('created_at',{ascending:false}).limit(20);
  if(r.error){h.innerHTML='<div class="card meta">Publications indisponibles.</div>';return}
@@ -1861,8 +1896,8 @@ function paintR(b,k){
 }
 async function setR(b,k){
  const key=b.dataset.id,prev=curR(b),next=(prev===k)?'':k;
- const r=await SB.rpc('community_set_post_reaction',{p_post_key:key,p_kind:next});
- if(r.error){toast('Réaction impossible : '+r.error.message);return}
+ const r=await SB.rpc('community_set_post_reaction',{p_post_key:key,p_kind:next||null});
+ if(r.error){paintR(b,prev);return}
  paintR(b,next);b.dataset.wkRx=next;
  const s=b.closest('[data-wk-social]')?.querySelector('[data-wk-summary]');
  if(s){const d=(next?1:0)-(prev?1:0);s.textContent=s.textContent.replace(/^(\d+) réaction/,(m,n)=>Math.max(0,+n+d)+' réaction')}
